@@ -394,11 +394,11 @@ function App() {
             <article className="panel activity-panel">
               <div className="panel__header"><div><h2>Atividade recente</h2><p>Últimas atualizações do estoque.</p></div><button className="icon-button" type="button" aria-label="Mais opções"><ChevronDown size={17} /></button></div>
               <div className="activity-list">
-                {activities.map((activity, index) => (
+                {initialActivities.map((activity, index) => (
                   <div className="activity-item" key={activity.title}>
                     <span className={`activity-item__icon activity-item__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span>
                     <div className="activity-item__content"><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div>
-                    {index < activities.length - 1 && <span className="activity-item__line" />}
+                    {index < initialActivities.length - 1 && <span className="activity-item__line" />}
                   </div>
                 ))}
               </div>
