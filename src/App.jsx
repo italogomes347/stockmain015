@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -76,6 +76,23 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false);
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileMenuOpen]);
+
   const filteredProducts = useMemo(() => {
     const term = searchTerm.trim().toLocaleLowerCase('pt-BR');
     if (!term) return products;
@@ -101,7 +118,7 @@ function App() {
         />
       )}
 
-      <aside className={`sidebar ${mobileMenuOpen ? 'sidebar--open' : ''}`}>
+      <aside id="main-sidebar" className={`sidebar ${mobileMenuOpen ? 'sidebar--open' : ''}`} aria-label="Menu principal">
         <div className="brand">
           <span className="brand__mark"><Boxes size={23} strokeWidth={2.1} /></span>
           <span className="brand__name">stock<span>main</span></span>
@@ -165,7 +182,7 @@ function App() {
       <main className="main-area">
         <header className="topbar">
           <div className="topbar__left">
-            <button className="icon-button topbar__menu" type="button" aria-label="Abrir menu" onClick={() => setMobileMenuOpen(true)}>
+            <button className="icon-button topbar__menu" type="button" aria-label="Abrir menu" aria-controls="main-sidebar" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}>
               <Menu size={21} />
             </button>
             <div className="breadcrumb"><span>Workspace</span><span className="breadcrumb__separator">/</span><strong>{activePage}</strong></div>
