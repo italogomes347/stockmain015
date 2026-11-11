@@ -218,7 +218,7 @@ function App() {
 
           <section className="metrics-grid" aria-label="Indicadores do estoque">
             <MetricCard label="Total de produtos" value="1.284" detail="8,2%" trend="up" icon={Package} tone="blue" />
-            <MetricCard label="Valor em estoque" value="R$ 84.笈" detail="5,4%" trend="up" icon={ShoppingCart} tone="violet" />
+            <MetricCard label="Valor em estoque" value="R$ 84,5 mil" detail="5,4%" trend="up" icon={ShoppingCart} tone="violet" />
             <MetricCard label="Estoque baixo" value="12" detail="3 itens" trend="down" icon={AlertTriangle} tone="amber" />
             <MetricCard label="Movimentações hoje" value="48" detail="12,5%" trend="up" icon={Activity} tone="green" />
           </section>
