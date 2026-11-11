@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import ProductDialog from './components/ProductDialog.jsx';
+import { initialProducts, initialActivities, categoryData, supplierData } from './data/initialData.js';
+import { calculateInventory, createProductId, formatCurrency, getProductStatus } from './utils/inventory.js';
 import {
   Activity,
   AlertTriangle,
@@ -38,24 +41,7 @@ const navigation = [
   { label: 'Relatórios', icon: TrendingUp }
 ];
 
-const products = [
-  { id: 'PRD-001', name: 'Notebook Pro 15', category: 'Informática', quantity: 24, minimum: 10, price: 4299.9, status: 'Disponível' },
-  { id: 'PRD-002', name: 'Mouse sem fio', category: 'Acessórios', quantity: 8, minimum: 12, price: 89.9, status: 'Estoque baixo' },
-  { id: 'PRD-003', name: 'Teclado mecânico', category: 'Acessórios', quantity: 36, minimum: 10, price: 249.9, status: 'Disponível' },
-  { id: 'PRD-004', name: 'Monitor 27 polegadas', category: 'Informática', quantity: 5, minimum: 8, price: 1199.9, status: 'Estoque baixo' },
-  { id: 'PRD-005', name: 'Headset profissional', category: 'Áudio', quantity: 0, minimum: 6, price: 319.9, status: 'Sem estoque' }
-];
 
-const activities = [
-  { title: 'Entrada de produtos', detail: 'Reposição de 12 unidades · Notebook Pro 15', time: 'Hoje, 09:42', type: 'entrada' },
-  { title: 'Saída de produtos', detail: 'Venda de 4 unidades · Teclado mecânico', time: 'Hoje, 09:18', type: 'saida' },
-  { title: 'Estoque atualizado', detail: 'Contagem ajustada · Mouse sem fio', time: 'Ontem, 16:30', type: 'ajuste' }
-];
-
-const currency = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL'
-});
 
 function MetricCard({ label, value, detail, trend, icon: Icon, tone }) {
   return (
@@ -83,19 +69,6 @@ const mobileTabs = [
   { label: 'Relatórios', icon: TrendingUp }
 ];
 
-const categoryData = [
-  { name: 'Informática', count: 18, share: '42%' },
-  { name: 'Acessórios', count: 24, share: '31%' },
-  { name: 'Áudio', count: 12, share: '18%' },
-  { name: 'Periféricos', count: 9, share: '9%' }
-];
-
-const supplierData = [
-  { name: 'Tech Distribuidora', detail: 'Informática e periféricos', initials: 'TD' },
-  { name: 'Mundo dos Acessórios', detail: 'Acessórios e componentes', initials: 'MA' },
-  { name: 'Áudio Center', detail: 'Equipamentos de áudio', initials: 'AC' }
-];
-
 function MobileProductCard({ product }) {
   const statusTone = product.status === 'Disponível' ? 'success' : product.status === 'Estoque baixo' ? 'warning' : 'danger';
   return (
@@ -110,13 +83,13 @@ function MobileProductCard({ product }) {
       </div>
       <div className="mobile-product-card__details">
         <span><small>Quantidade</small><strong>{product.quantity} <small>/ mín. {product.minimum}</small></strong></span>
-        <span><small>Preço unitário</small><strong>{currency.format(product.price)}</strong></span>
+        <span><small>Preço unitário</small><strong>{formatCurrency(product.price)}</strong></span>
       </div>
     </article>
   );
 }
 
-function MobileWorkspace({ activePage, filteredProducts, productsCount, searchTerm, setSearchTerm, selectPage }) {
+function MobileWorkspace({ activePage, products, filteredProducts, productsCount, searchTerm, setSearchTerm, selectPage, onCreateProduct }) {
   let content;
 
   if (activePage === 'Visão geral') {
@@ -142,13 +115,14 @@ function MobileWorkspace({ activePage, filteredProducts, productsCount, searchTe
         </section>
         <section className="mobile-section">
           <div className="mobile-section__heading"><div><h2>Atividade recente</h2><p>Últimas atualizações registradas</p></div><button type="button" onClick={() => selectPage('Movimentações')}>Histórico <ArrowRight size={14} /></button></div>
-          <div className="mobile-activity-list">{activities.slice(0, 2).map((activity) => <div className="mobile-activity" key={activity.title}><span className={`mobile-activity__icon mobile-activity__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span><div><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div></div>)}</div>
+          <div className="mobile-activity-list">{initialActivities.slice(0, 2).map((activity) => <div className="mobile-activity" key={activity.title}><span className={`mobile-activity__icon mobile-activity__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span><div><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div></div>)}</div>
         </section>
       </>
     );
   } else if (activePage === 'Produtos') {
     content = (
       <section className="mobile-section mobile-section--first">
+        <div className="mobile-section__heading"><div><h2>Catálogo de produtos</h2><p>Gerencie os itens do seu estoque</p></div><button type="button" onClick={onCreateProduct}><Plus size={15} /> Novo</button></div>
         <div className="mobile-search"><Search size={17} /><input type="search" placeholder="Buscar por nome, código ou categoria" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></div>
         <div className="mobile-filter-summary"><span>{filteredProducts.length} de {productsCount} produtos</span><button type="button" onClick={() => setSearchTerm('')}>Limpar busca</button></div>
         <div className="mobile-card-list">{filteredProducts.map((product) => <MobileProductCard key={product.id} product={product} />)}{filteredProducts.length === 0 && <div className="mobile-empty"><Package size={25} /><strong>Nenhum produto encontrado</strong><span>Tente outro nome ou código.</span></div>}</div>
@@ -159,7 +133,7 @@ function MobileWorkspace({ activePage, filteredProducts, productsCount, searchTe
       <section className="mobile-section mobile-section--first">
         <div className="mobile-summary-card"><span>Movimentações registradas hoje</span><strong>48</strong><small>Entradas, saídas e ajustes de estoque</small></div>
         <div className="mobile-section__heading"><div><h2>Histórico recente</h2><p>Registros demonstrativos</p></div></div>
-        <div className="mobile-activity-list">{activities.map((activity) => <div className="mobile-activity" key={activity.title}><span className={`mobile-activity__icon mobile-activity__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span><div><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div></div>)}</div>
+        <div className="mobile-activity-list">{initialActivities.map((activity) => <div className="mobile-activity" key={activity.title}><span className={`mobile-activity__icon mobile-activity__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span><div><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div></div>)}</div>
         <div className="mobile-note">Os registros desta versão são exemplos para apresentação. O histórico real será conectado ao armazenamento do sistema.</div>
       </section>
     );
@@ -208,6 +182,8 @@ function MobileWorkspace({ activePage, filteredProducts, productsCount, searchTe
 
 function App() {
   const [activePage, setActivePage] = useState('Visão geral');
+  const [products, setProducts] = useState(initialProducts);
+  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -242,6 +218,18 @@ function App() {
     setActivePage(page);
     setMobileMenuOpen(false);
   };
+
+  const handleCreateProduct = (product) => {
+    const id = product.id || createProductId(products);
+    const newProduct = { ...product, id, status: getProductStatus(product) };
+    setProducts((current) => [newProduct, ...current]);
+    setIsProductDialogOpen(false);
+    setActivePage('Produtos');
+    setSearchTerm('');
+  };
+
+  const lowStockCount = products.filter((product) => product.quantity <= product.minimum).length;
+  const inventoryValue = calculateInventory(products);
 
   return (
     <div className="app-shell">
@@ -364,16 +352,16 @@ function App() {
               <button className="button button--secondary" type="button" onClick={() => window.print()}>
                 <Download size={16} /> Exportar
               </button>
-              <button className="button button--primary" type="button" onClick={() => selectPage('Produtos')}>
+              <button className="button button--primary" type="button" onClick={() => setIsProductDialogOpen(true)}>
                 <Plus size={17} /> Novo produto
               </button>
             </div>
           </section>
 
           <section className="metrics-grid" aria-label="Indicadores do estoque">
-            <MetricCard label="Total de produtos" value="1.284" detail="8,2%" trend="up" icon={Package} tone="blue" />
-            <MetricCard label="Valor em estoque" value="R$ 84,5 mil" detail="5,4%" trend="up" icon={ShoppingCart} tone="violet" />
-            <MetricCard label="Estoque baixo" value="12" detail="3 itens" trend="down" icon={AlertTriangle} tone="amber" />
+            <MetricCard label="Total de produtos" value={products.length.toLocaleString('pt-BR')} detail="itens cadastrados" trend="up" icon={Package} tone="blue" />
+            <MetricCard label="Valor em estoque" value={formatCurrency(inventoryValue)} detail="valor calculado" trend="up" icon={ShoppingCart} tone="violet" />
+            <MetricCard label="Estoque baixo" value={lowStockCount.toLocaleString('pt-BR')} detail="itens em atenção" trend="down" icon={AlertTriangle} tone="amber" />
             <MetricCard label="Movimentações hoje" value="48" detail="12,5%" trend="up" icon={Activity} tone="green" />
           </section>
 
@@ -392,7 +380,7 @@ function App() {
                         <td><div className="product-cell"><span className="product-cell__icon"><Package size={17} /></span><span><strong>{product.name}</strong><small>{product.id}</small></span></div></td>
                         <td>{product.category}</td>
                         <td><strong>{product.quantity}</strong><small className="table-muted"> / mín. {product.minimum}</small></td>
-                        <td>{currency.format(product.price)}</td>
+                        <td>{formatCurrency(product.price)}</td>
                         <td><span className={`status-pill status-pill--${product.status === 'Disponível' ? 'success' : product.status === 'Estoque baixo' ? 'warning' : 'danger'}`}><span />{product.status}</span></td>
                       </tr>
                     ))}
@@ -426,7 +414,7 @@ function App() {
 
           <footer className="page-footer"><span>© 2026 StockMain</span><span>Gestão inteligente de estoque</span></footer>
         </div>
-        <MobileWorkspace activePage={activePage} filteredProducts={filteredProducts} productsCount={products.length} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} />
+        <MobileWorkspace activePage={activePage} products={products} filteredProducts={filteredProducts} productsCount={products.length} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} />
         <nav className="mobile-bottom-nav" aria-label="Navegação mobile">
           {mobileTabs.map(({ label, icon: Icon }) => (
             <button className={`mobile-bottom-nav__item ${activePage === label ? 'mobile-bottom-nav__item--active' : ''}`} key={label} type="button" onClick={() => selectPage(label)} aria-current={activePage === label ? 'page' : undefined}>
@@ -437,6 +425,13 @@ function App() {
             <Menu size={20} strokeWidth={1.9} /><span>Mais</span>
           </button>
         </nav>
+        {isProductDialogOpen && (
+          <ProductDialog
+            onClose={() => setIsProductDialogOpen(false)}
+            onSave={handleCreateProduct}
+            products={products}
+          />
+        )}
       </main>
     </div>
   );
