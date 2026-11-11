@@ -8,7 +8,7 @@ import {
   Bell,
   Boxes,
   CalendarDays,
-  ChartNoAxesColumnIncreasing,
+  ArrowLeftRight,
   ClipboardList,
   Home,
   Tags,
@@ -80,7 +80,7 @@ const mobileTabs = [
   { label: 'Visão geral', icon: Home },
   { label: 'Produtos', icon: Package },
   { label: 'Movimentações', icon: Activity },
-  { label: 'Relatórios', icon: ChartNoAxesColumnIncreasing }
+  { label: 'Relatórios', icon: TrendingUp }
 ];
 
 const categoryData = [
