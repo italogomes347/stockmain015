@@ -212,7 +212,7 @@ function App() {
       [product.id, product.name, product.category, product.status]
         .some((value) => value.toLocaleLowerCase('pt-BR').includes(term))
     );
-  }, [searchTerm]);
+  }, [products, searchTerm]);
 
   const selectPage = (page) => {
     setActivePage(page);
