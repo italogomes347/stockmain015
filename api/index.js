@@ -472,6 +472,10 @@ export default async function handler(req, res) {
         price: Math.max(0, Number(product.price) || 0),
         status: Number(product.quantity) <= 0 ? 'Sem estoque' : Number(product.quantity) <= Number(product.minimum) ? 'Estoque baixo' : 'Disponível'
       }));
+      const latestData = await readJsonFile(sharedId);
+      if (expectedUpdatedAt && latestData?.updatedAt && expectedUpdatedAt !== latestData.updatedAt) {
+        return send(res, 409, { error: 'Outro usuário salvou alterações neste estoque. Os dados mais recentes foram carregados; confira e tente novamente.', conflict: true, updatedAt: latestData.updatedAt });
+      }
       const safeActivities = activities.slice(0, 10000).map((activity) => {
         const item = activity && typeof activity === 'object' ? activity : {};
         return {
@@ -483,7 +487,7 @@ export default async function handler(req, res) {
           createdAt: item.createdAt && !Number.isNaN(Date.parse(item.createdAt)) ? new Date(item.createdAt).toISOString() : null
         };
       });
-      const data = { userId: session.sub, profile: currentData?.profile || null, catalogVersion: 2, initialized: true, products: safeProducts, activities: safeActivities, updatedAt: new Date().toISOString() };
+      const data = { userId: 'shared', profile: null, catalogVersion: 2, initialized: true, products: safeProducts, activities: safeActivities, updatedAt: `${new Date().toISOString()}-${randomUUID()}` };
       await getDrive().files.update({
         fileId: sharedId,
         media: { mimeType: 'application/json', body: Readable.from([JSON.stringify(data)]) },
