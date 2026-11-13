@@ -232,16 +232,19 @@ export default async function handler(req, res) {
         quantity: Math.max(0, Math.floor(Number(product.quantity) || 0)),
         minimum: Math.max(0, Math.floor(Number(product.minimum) || 0)),
         price: Math.max(0, Number(product.price) || 0),
-        status: String(product.status || '').slice(0, 30)
+        status: Number(product.quantity) <= 0 ? 'Sem estoque' : Number(product.quantity) <= Number(product.minimum) ? 'Estoque baixo' : 'Disponível'
       }));
-      const safeActivities = activities.slice(0, 10000).map((activity) => ({
-        id: String(activity.id || randomUUID()).slice(0, 80),
-        title: String(activity.title || '').slice(0, 100),
-        detail: String(activity.detail || '').slice(0, 240),
-        time: String(activity.time || '').slice(0, 60),
-        type: ['entrada', 'saida', 'ajuste'].includes(activity.type) ? activity.type : 'ajuste',
-        createdAt: activity.createdAt && !Number.isNaN(Date.parse(activity.createdAt)) ? new Date(activity.createdAt).toISOString() : null
-      }));
+      const safeActivities = activities.slice(0, 10000).map((activity) => {
+        const item = activity && typeof activity === 'object' ? activity : {};
+        return {
+          id: String(item.id || randomUUID()).slice(0, 80),
+          title: String(item.title || '').slice(0, 100),
+          detail: String(item.detail || '').slice(0, 240),
+          time: String(item.time || '').slice(0, 60),
+          type: ['entrada', 'saida', 'ajuste'].includes(item.type) ? item.type : 'ajuste',
+          createdAt: item.createdAt && !Number.isNaN(Date.parse(item.createdAt)) ? new Date(item.createdAt).toISOString() : null
+        };
+      });
       const data = { userId: session.sub, products: safeProducts, activities: safeActivities, updatedAt: new Date().toISOString() };
       await writeJsonFile(fileName, folders.usersId, data);
       return send(res, 200, { success: true, updatedAt: data.updatedAt });
