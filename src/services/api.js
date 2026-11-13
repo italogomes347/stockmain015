@@ -1,0 +1,33 @@
+async function request(action, payload = {}) {
+  const response = await fetch('/api', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ action, ...payload })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.error || 'Falha na comunicação com o StockMain.');
+    error.status = response.status;
+    error.conflict = Boolean(data.conflict);
+    error.updatedAt = data.updatedAt || null;
+    throw error;
+  }
+  return data;
+}
+
+export function getInventory() {
+  return request('getInventory');
+}
+
+export function saveInventory(inventory) {
+  return request('saveInventory', inventory);
+}
+
+export function getProfile() {
+  return request('getProfile');
+}
+
+export function updateProfile(profile) {
+  return request('updateProfile', profile);
+}
