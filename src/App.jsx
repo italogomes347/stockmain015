@@ -519,7 +519,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
       ['Produto', 'Código', 'Categoria', 'Quantidade', 'Mínimo', 'Preço unitário', 'Valor em estoque', 'Status'],
       ...products.map((item) => [item.name, item.id, item.category, item.quantity, item.minimum, item.price, Number(item.price || 0) * Number(item.quantity || 0), getProductStatus(item)])
     ];
-    const csv = '\uFEFF' + rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')} "`.trim()).join(';')).join('\r\n');
+    const csv = '\uFEFF' + rows.map((row) => row.map((cell) => '"' + String(cell ?? '').replace(/"/g, '""') + '"').join(';')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const link = document.createElement('a');
     link.href = url;
