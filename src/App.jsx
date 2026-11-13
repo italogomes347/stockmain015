@@ -247,8 +247,7 @@ function MovementDialog({ products, onClose, onSave }) {
 
 function InventoryApp({ user, onLogout }) {
   const [activePage, setActivePage] = useState('Visão geral');
-  const [products, setProducts] = useState([]);
-  const [activities, setActivities] = useState([]);
+  const [products, setProducts] = useState([]);  const [activities, setActivities] = useState([]);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isMovementDialogOpen, setIsMovementDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -497,8 +496,7 @@ function InventoryApp({ user, onLogout }) {
 
           <section className="metrics-grid" aria-label="Indicadores do estoque">
             <MetricCard label="Total de produtos" value={products.length.toLocaleString('pt-BR')} detail="itens cadastrados" trend="up" icon={Package} tone="blue" />
-            <MetricCard label="Valor em estoque" value={formatCurrency(inventoryValue)} detail="valor calculado" trend="up" icon={ShoppingCart} tone="violet" />
-            <MetricCard label="Estoque baixo" value={lowStockCount.toLocaleString('pt-BR')} detail="itens em atenção" trend="down" icon={AlertTriangle} tone="amber" />
+            <MetricCard label="Valor em estoque" value={formatCurrency(inventoryValue)} detail="valor calculado" trend="up" icon={ShoppingCart} tone="violet" />            <MetricCard label="Estoque baixo" value={lowStockCount.toLocaleString('pt-BR')} detail="itens em atenção" trend="down" icon={AlertTriangle} tone="amber" />
             <MetricCard label="Atividades hoje" value={movementsToday.toLocaleString('pt-BR')} detail="registros hoje" trend="up" icon={Activity} tone="green" />
           </section>
 
@@ -609,6 +607,7 @@ function InventoryApp({ user, onLogout }) {
               <article className="panel" style={{ marginTop: 16 }}><div className="panel__header"><div><h2>Armazenamento</h2><p>Os dados são guardados em arquivos JSON no Google Drive da aplicação.</p></div></div><p className="empty-state">O acesso ao Drive é interno. Você não precisa conectar uma conta Google.</p></article>
             </>
           )}
+        </div>
         </div>
         <MobileWorkspace activePage={activePage} products={products} activities={activities} filteredProducts={filteredProducts} productsCount={products.length} movementsToday={movementsToday} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} />
         <nav className="mobile-bottom-nav" aria-label="Navegação mobile">
