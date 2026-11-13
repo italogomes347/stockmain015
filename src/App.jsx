@@ -309,7 +309,7 @@ function InventoryApp({ user, onLogout }) {
             >
               <Icon size={18} strokeWidth={1.8} />
               <span>{label}</span>
-              {label === 'Produtos' && <span className="navigation__count">05</span>}
+              {label === 'Produtos' && <span className="navigation__count">{products.length.toLocaleString('pt-BR')}</span>}
             </button>
           ))}
         </nav>
