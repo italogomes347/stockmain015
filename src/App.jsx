@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import ProductDialog from './components/ProductDialog.jsx';
+import { getInventory, saveInventory } from './services/api.js';
 import { initialProducts, initialActivities, categoryData, supplierData } from './data/initialData.js';
 import { calculateInventory, createProductId, formatCurrency, getProductStatus } from './utils/inventory.js';
 import {
@@ -180,13 +181,33 @@ function MobileWorkspace({ activePage, products, filteredProducts, productsCount
   );
 }
 
-function App() {
+function InventoryApp({ user, onLogout }) {
   const [activePage, setActivePage] = useState('Visão geral');
   const [products, setProducts] = useState(initialProducts);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [storageError, setStorageError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    getInventory()
+      .then(async (data) => {
+        if (!active) return;
+        if (Array.isArray(data?.products)) {
+          setProducts(data.products);
+        } else {
+          await saveInventory({ products: initialProducts, activities: initialActivities });
+        }
+      })
+      .catch(() => {
+        if (active) setStorageError('Não foi possível sincronizar os dados com o Google Drive.');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!mobileMenuOpen) return undefined;
@@ -219,13 +240,20 @@ function App() {
     setMobileMenuOpen(false);
   };
 
-  const handleCreateProduct = (product) => {
+  const handleCreateProduct = async (product) => {
     const id = product.id || createProductId(products);
     const newProduct = { ...product, id, status: getProductStatus(product) };
-    setProducts((current) => [newProduct, ...current]);
+    const nextProducts = [newProduct, ...products];
+    setProducts(nextProducts);
     setIsProductDialogOpen(false);
     setActivePage('Produtos');
     setSearchTerm('');
+    try {
+      await saveInventory({ products: nextProducts, activities: initialActivities });
+      setStorageError('');
+    } catch {
+      setStorageError('O produto foi incluído nesta sessão, mas não foi possível salvá-lo no Google Drive.');
+    }
   };
 
   const lowStockCount = products.filter((product) => product.quantity <= product.minimum).length;
@@ -298,7 +326,7 @@ function App() {
           <div className="user-profile">
             <span className="user-profile__avatar">IG</span>
             <span className="user-profile__copy"><strong>Administrador</strong><small>Gestor do sistema</small></span>
-            <button className="icon-button" type="button" aria-label="Opções do perfil"><ChevronDown size={16} /></button>
+            <button className="icon-button" type="button" aria-label="Sair da conta" onClick={onLogout}><ChevronDown size={16} /></button>
           </div>
         </div>
       </aside>
@@ -336,10 +364,11 @@ function App() {
                 </div>
               )}
             </div>
-            <span className="topbar__avatar">IG</span>
+            <span className="topbar__avatar">{(user?.name || user?.email || 'U').slice(0, 2).toUpperCase()}</span>
           </div>
         </header>
 
+        {storageError && <div className="storage-error" role="alert">{storageError}</div>}
         <div className="desktop-dashboard">
         <div className="page-content">
           <section className="welcome-section">
@@ -435,6 +464,88 @@ function App() {
       </main>
     </div>
   );
+}
+
+function App() {
+  const [session, setSession] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [authMode, setAuthMode] = useState('login');
+  const [authForm, setAuthForm] = useState({ name: '', email: '', password: '' });
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  useEffect(() => {
+    fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'session' }), credentials: 'same-origin' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.authenticated) setSession(data);
+      })
+      .catch(() => setAuthError('Não foi possível verificar sua sessão. Tente novamente.'))
+      .finally(() => setCheckingSession(false));
+  }, []);
+
+  const updateAuthField = (event) => {
+    setAuthForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+    setAuthError('');
+  };
+
+  const submitAuth = async (event) => {
+    event.preventDefault();
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      const response = await fetch('/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: authMode, ...authForm })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Não foi possível autenticar.');
+      setSession(data);
+    } catch (error) {
+      setAuthError(error.message || 'Falha ao conectar com o servidor.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    await fetch('/api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ action: 'logout' })
+    });
+    setSession(null);
+  };
+
+  if (checkingSession) return <main className="auth-screen"><div className="auth-card"><span className="auth-brand">stock<span>main</span></span><p>Verificando sua sessão...</p></div></main>;
+
+  if (!session) {
+    return (
+      <main className="auth-screen">
+        <section className="auth-card">
+          <span className="auth-brand">stock<span>main</span></span>
+          <p className="auth-eyebrow">GESTÃO INTELIGENTE DE ESTOQUE</p>
+          <h1>{authMode === 'login' ? 'Acesse sua conta' : 'Crie sua conta'}</h1>
+          <p className="auth-description">{authMode === 'login' ? 'Entre para acessar os dados do seu estoque.' : 'Cadastre-se para criar seu espaço de trabalho.'}</p>
+          <form className="auth-form" onSubmit={submitAuth}>
+            {authMode === 'register' && <label>Nome completo<input name="name" value={authForm.name} onChange={updateAuthField} autoComplete="name" maxLength="80" required /></label>}
+            <label>E-mail<input name="email" type="email" value={authForm.email} onChange={updateAuthField} autoComplete="email" maxLength="254" required /></label>
+            <label>Senha<input name="password" type="password" value={authForm.password} onChange={updateAuthField} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} minLength="10" maxLength="128" required /></label>
+            {authMode === 'register' && <small className="auth-hint">Use pelo menos 10 caracteres, incluindo letras e números.</small>}
+            {authError && <p className="auth-error" role="alert">{authError}</p>}
+            <button className="button button--primary auth-submit" type="submit" disabled={authLoading}>{authLoading ? 'Aguarde...' : authMode === 'login' ? 'Entrar' : 'Criar conta'}</button>
+          </form>
+          <p className="auth-switch">{authMode === 'login' ? 'Ainda não tem conta?' : 'Já possui uma conta?'} <button type="button" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}> {authMode === 'login' ? 'Criar conta' : 'Fazer login'}</button></p>
+          <p className="auth-security">Seus dados de estoque são separados por conta e armazenados no Google Drive da aplicação.</p>
+        </section>
+      </main>
+    );
+  }
+
+  return <InventoryApp user={session.user} onLogout={logout} />;
 }
 
 export default App;
