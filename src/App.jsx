@@ -679,13 +679,16 @@ function App() {
   };
 
   const logout = async () => {
-    await fetch('/api', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ action: 'logout' })
-    });
-    setSession(null);
+    try {
+      await fetch('/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'logout' })
+      });
+    } finally {
+      setSession(null);
+    }
   };
 
   if (checkingSession) return <main className="auth-screen"><div className="auth-card"><span className="auth-brand">stock<span>main</span></span><p>Verificando sua sessão...</p></div></main>;
