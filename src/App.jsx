@@ -11,6 +11,7 @@ async function parseApiResponse(response) {
 import { useEffect, useMemo, useState } from 'react';
 import ProductDialog from './components/ProductDialog.jsx';
 import ProductDetailsDialog from './components/ProductDetailsDialog.jsx';
+import SuppliersPanel from './components/SuppliersPanel.jsx';
 import { getInventory, saveInventory, getProfile, updateProfile } from './services/api.js';
 import { categoryData, supplierData } from './data/initialData.js';
 import { calculateInventory, createProductId, formatCurrency, getProductStatus } from './utils/inventory.js';
@@ -84,7 +85,8 @@ const mobileTabs = [
   { label: 'Visão geral', icon: Home },
   { label: 'Produtos', icon: Package },
   { label: 'Movimentações', icon: Activity },
-  { label: 'Relatórios', icon: TrendingUp }
+  { label: 'Relatórios', icon: TrendingUp },
+  { label: 'Fornecedores', icon: Users }
 ];
 
 function MobileProductCard({ product, onSelectProduct }) {
@@ -108,7 +110,7 @@ function MobileProductCard({ product, onSelectProduct }) {
   );
 }
 
-function MobileWorkspace({ activePage, products, activities, filteredProducts, productsCount, movementsToday, searchTerm, setSearchTerm, selectPage, onCreateProduct, onSelectProduct, profileForm, setProfileForm, onAvatarChange, onProfileSave, profileBusy, profileMessage }) {
+function MobileWorkspace({ user, activePage, products, activities, filteredProducts, productsCount, movementsToday, searchTerm, setSearchTerm, selectPage, onCreateProduct, onSelectProduct, profileForm, setProfileForm, onAvatarChange, onProfileSave, profileBusy, profileMessage }) {
   let content;
 
   if (activePage === 'Visão geral') {
@@ -164,12 +166,7 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
       </section>
     );
   } else if (activePage === 'Fornecedores') {
-    content = (
-      <section className="mobile-section mobile-section--first">
-        <div className="mobile-section__heading"><div><h2>Fornecedores</h2><p>Empresas responsáveis pelo fornecimento dos itens</p></div></div>
-        <div className="mobile-card-list">{supplierData.map((supplier) => <article className="mobile-info-card" key={supplier.name}><span className="mobile-supplier-avatar">{supplier.initials}</span><div><strong>{supplier.name}</strong><small>{supplier.detail}</small></div><Truck size={17} /></article>)}</div>
-      </section>
-    );
+    content = <SuppliersPanel role={user?.role} />;
   } else if (activePage === 'Relatórios') {
     content = (
       <section className="mobile-section mobile-section--first">
@@ -393,6 +390,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
   }, [products, searchTerm]);
 
   const selectPage = (page) => {
+    if (page === 'Fornecedores' && !['admin', 'supplier'].includes(user?.role)) return;
     setActivePage(page);
     setMobileMenuOpen(false);
   };
@@ -568,7 +566,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
 
         <div className="sidebar__section-label">MENU PRINCIPAL</div>
         <nav className="navigation" aria-label="Navegação principal">
-          {navigation.map(({ label, icon: Icon }) => (
+          {navigation.filter(({ label }) => label !== 'Fornecedores' || ['admin', 'supplier'].includes(user?.role)).map(({ label, icon: Icon }) => (
             <button
               className={`navigation__item ${activePage === label ? 'navigation__item--active' : ''}`}
               key={label}
@@ -763,12 +761,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
               <article className="panel"><div className="panel__header"><div><h2>Categorias encontradas</h2><p>Calculadas a partir dos produtos cadastrados</p></div></div><div className="table-wrap"><table className="products-table"><thead><tr><th>CATEGORIA</th><th>PRODUTOS</th></tr></thead><tbody>{[...new Set(products.map((product) => product.category).filter(Boolean))].sort().map((category) => <tr key={category}><td><strong>{category}</strong></td><td>{products.filter((product) => product.category === category).length}</td></tr>)}{!products.length && <tr><td className="empty-state" colSpan="2">Cadastre produtos para visualizar as categorias.</td></tr>}</tbody></table></div></article>
             </>
           )}
-          {activePage === 'Fornecedores' && (
-            <>
-              <section className="welcome-section"><div><div className="eyebrow"><Truck size={14} /> PARCEIROS</div><h1>Fornecedores</h1><p>Área de consulta de fornecedores.</p></div></section>
-              <article className="panel"><div className="panel__header"><div><h2>Cadastro de fornecedores</h2><p>O cadastro de fornecedores ainda não está conectado ao armazenamento.</p></div></div><p className="empty-state">Esta etapa será implementada após os módulos centrais de produtos e estoque.</p></article>
-            </>
-          )}
+          {activePage === 'Fornecedores' && <SuppliersPanel role={user?.role} />}
           {activePage === 'Relatórios' && (
             <>
               <section className="welcome-section"><div><div className="eyebrow"><TrendingUp size={14} /> INDICADORES</div><h1>Relatórios</h1><p>Resumo calculado a partir dos dados da sua conta.</p></div><div className="welcome-section__actions"><button className="button button--secondary" type="button" onClick={() => window.print()}><Download size={16} /> Exportar</button></div></section>
@@ -814,9 +807,9 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
           )}
         </div>
         </div>
-        <MobileWorkspace activePage={activePage} products={products} activities={activities} filteredProducts={filteredProducts} productsCount={products.length} movementsToday={movementsToday} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} onSelectProduct={setSelectedProduct} profileForm={profileForm} setProfileForm={setProfileForm} onAvatarChange={handleAvatarChange} onProfileSave={handleProfileSave} profileBusy={profileBusy} profileMessage={profileMessage} />
+        <MobileWorkspace user={user} activePage={activePage} products={products} activities={activities} filteredProducts={filteredProducts} productsCount={products.length} movementsToday={movementsToday} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} onSelectProduct={setSelectedProduct} profileForm={profileForm} setProfileForm={setProfileForm} onAvatarChange={handleAvatarChange} onProfileSave={handleProfileSave} profileBusy={profileBusy} profileMessage={profileMessage} />
         <nav className="mobile-bottom-nav" aria-label="Navegação mobile">
-          {mobileTabs.map(({ label, icon: Icon }) => (
+          {mobileTabs.filter(({ label }) => label !== 'Fornecedores' || ['admin', 'supplier'].includes(user?.role)).map(({ label, icon: Icon }) => (
             <button className={`mobile-bottom-nav__item ${activePage === label ? 'mobile-bottom-nav__item--active' : ''}`} key={label} type="button" onClick={() => selectPage(label)} aria-current={activePage === label ? 'page' : undefined}>
               <Icon size={20} strokeWidth={1.9} /><span>{label === 'Visão geral' ? 'Início' : label === 'Movimentações' ? 'Movimentos' : label}</span>
             </button>

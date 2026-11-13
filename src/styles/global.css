@@ -2105,3 +2105,54 @@ button:disabled {
 .mobile-primary-action--secondary{color:#5268c8;background:#f5f7ff;border:1px solid #e2e8fa}
 .product-details-delete{color:#b64e58}
 @media(max-width:520px){.product-row-actions{gap:4px}.button--compact{padding:0 7px}.product-delete-button{width:29px;height:29px}}
+
+/* Administração de contas e diretório de fornecedores */
+.supplier-admin{display:grid;gap:16px;min-width:0}
+.supplier-admin__welcome{align-items:center}
+.supplier-admin__toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.supplier-admin__stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.supplier-admin__stats article{display:flex;align-items:center;gap:12px;padding:17px 19px;border:1px solid var(--border-color,#e8ecf3);border-radius:13px;background:var(--panel-bg,#fff);min-width:0}
+.supplier-admin__stats article>svg{flex:0 0 auto;color:#6378d2}
+.supplier-admin__stats article div{display:grid;gap:4px}
+.supplier-admin__stats small{color:var(--muted-color,#8390a4);font-size:11px}
+.supplier-admin__stats strong{color:var(--text-color,#26334a);font-size:23px;line-height:1.1}
+.supplier-admin__form-panel{padding:0 20px 20px}
+.supplier-admin__form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.supplier-admin__form label{display:grid;gap:7px;color:var(--text-color,#344158);font-size:12px;font-weight:700}
+.supplier-admin__form input,.supplier-admin__form select{width:100%;min-height:42px;padding:0 12px;border:1px solid var(--border-color,#dfe5ef);border-radius:9px;background:var(--input-bg,#fff);color:var(--text-color,#26334a);font:inherit;font-weight:500;outline:none}
+.supplier-admin__form input:focus,.supplier-admin__form select:focus{border-color:#7185dc;box-shadow:0 0 0 3px #7185dc20}
+.supplier-admin__form small{color:var(--muted-color,#8994a7);font-size:10px;font-weight:400}
+.supplier-admin__form-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;grid-column:1/-1;padding-top:3px}
+.supplier-admin__form--password{grid-template-columns:1fr}
+.supplier-admin__notice,.supplier-admin__error{padding:12px 15px;border-radius:9px;font-size:12px}
+.supplier-admin__notice{border:1px solid #bce8d4;background:#effaf4;color:#16744f}
+.supplier-admin__error{border:1px solid #f0c5c9;background:#fff3f3;color:#a73c48}
+.supplier-admin__list-panel{min-width:0;overflow:hidden}
+.supplier-admin__count{flex:0 0 auto;padding:6px 10px;border-radius:20px;background:#f1f3fa;color:#65718b;font-size:10px;font-weight:700}
+.supplier-admin__table-wrap{width:100%;overflow-x:auto}
+.supplier-admin__table{width:100%;border-collapse:collapse;min-width:690px}
+.supplier-admin__table th{padding:12px 16px;background:#f8f9fc;color:#8994a7;text-align:left;font-size:9px;letter-spacing:.7px;font-weight:800}
+.supplier-admin__table td{padding:13px 16px;border-top:1px solid #edf0f5;color:var(--text-color,#42506a);font-size:11px;vertical-align:middle}
+.supplier-admin__identity{display:flex;align-items:center;gap:9px;min-width:150px}
+.supplier-admin__identity>span{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:10px;background:#edf0ff;color:#5268c8;font-size:10px;font-weight:800}
+.supplier-admin__identity strong{color:var(--text-color,#2b3850);font-size:11px}
+.supplier-admin__role{display:inline-flex;padding:6px 9px;border-radius:20px;font-size:9px;font-weight:800;white-space:nowrap}
+.supplier-admin__role--admin{background:#eeeaff;color:#6a52b5}
+.supplier-admin__role--supplier{background:#e9f7f0;color:#20805d}
+.supplier-admin__role--user{background:#f0f2f6;color:#67748a}
+.supplier-admin__actions{display:flex;align-items:center;gap:5px}
+.supplier-admin__actions .icon-button{width:30px;height:30px}
+.supplier-admin__delete{color:#bc5360}
+.supplier-admin__protected{display:inline-flex;align-items:center;gap:5px;color:#6d59b0;font-size:10px;font-weight:700}
+.supplier-admin__empty{display:grid;justify-items:center;gap:8px;padding:38px 18px;color:#8793a7;font-size:11px;text-align:center}
+.supplier-admin__empty strong{color:var(--text-color,#33415a);font-size:13px}
+.supplier-admin__security{display:flex;align-items:flex-start;gap:9px;margin:15px 16px 16px;padding:12px;border:1px solid #e8edf7;border-radius:9px;background:#fafbfe;color:#75839a;font-size:10px;line-height:1.55}
+.supplier-admin__security svg{flex:0 0 auto;color:#6880ce}
+.app-shell[data-theme=dark] .supplier-admin__stats article,.app-shell[data-theme=dark] .supplier-admin__list-panel,.app-shell[data-theme=dark] .supplier-admin__form-panel{background:#1d2a3e;border-color:#35445c}
+.app-shell[data-theme=dark] .supplier-admin__stats strong,.app-shell[data-theme=dark] .supplier-admin__identity strong{color:#edf2fb}
+.app-shell[data-theme=dark] .supplier-admin__table th,.app-shell[data-theme=dark] .supplier-admin__security{background:#243249;border-color:#35445c;color:#aab7ca}
+.app-shell[data-theme=dark] .supplier-admin__table td{border-color:#35445c;color:#cbd5e1}
+.app-shell[data-theme=dark] .supplier-admin__form input,.app-shell[data-theme=dark] .supplier-admin__form select{background:#172337;border-color:#3b4a63;color:#edf2fb}
+.app-shell[data-theme=dark] .supplier-admin__count{background:#293750;color:#cbd5e1}
+@media(max-width:760px){.supplier-admin__stats{grid-template-columns:1fr 1fr}.supplier-admin__welcome{align-items:flex-start;flex-direction:column}.supplier-admin__form{grid-template-columns:1fr}.supplier-admin__form-actions{grid-column:1}.supplier-admin__form-panel{padding:0 15px 16px}.supplier-admin__table{min-width:640px}}
+@media(max-width:440px){.supplier-admin__stats{grid-template-columns:1fr}.supplier-admin__toolbar{width:100%}.supplier-admin__toolbar .button{flex:1;justify-content:center}}

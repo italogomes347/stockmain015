@@ -6,6 +6,7 @@ import { google } from 'googleapis';
 const scryptAsync = promisify(scrypt);
 const COOKIE_NAME = 'stockmain_session';
 const SESSION_DURATION = 60 * 60 * 12;
+const ADMIN_EMAIL = 'italocaco101@gmail.com';
 const ROOT_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
 
 let driveClient;
@@ -110,6 +111,8 @@ function signSession(user) {
     sub: user.id,
     email: user.email,
     name: user.name,
+    role: user.email === ADMIN_EMAIL ? 'admin' : (user.role || 'user'),
+    sv: Number(user.sessionVersion || 0),
     exp: Math.floor(Date.now() / 1000) + SESSION_DURATION
   })).toString('base64url');
   const signature = createHmac('sha256', process.env.SESSION_SECRET).update(payload).digest('base64url');
@@ -164,7 +167,7 @@ async function getUserFiles() {
 }
 
 function publicUser(user) {
-  return { id: user.id, name: user.name, email: user.email };
+  return { id: user.id, name: user.name, email: user.email, role: user.email === ADMIN_EMAIL ? 'admin' : (user.role || 'user'), createdAt: user.createdAt || null, active: user.active !== false };
 }
 
 const INITIAL_PRODUCTS = [
@@ -225,7 +228,7 @@ export default async function handler(req, res) {
     const session = readSession(cookies[COOKIE_NAME]);
 
     if (action === 'session') {
-      return session ? send(res, 200, { authenticated: true, user: { id: session.sub, name: session.name, email: session.email } }) : send(res, 200, { authenticated: false });
+      return session ? send(res, 200, { authenticated: true, user: { id: session.sub, name: session.name, email: session.email, role: session.email === ADMIN_EMAIL ? 'admin' : (session.role || 'user') } }) : send(res, 200, { authenticated: false });
     }
 
     if (action === 'logout') {
@@ -246,13 +249,13 @@ export default async function handler(req, res) {
         if (user) return send(res, 409, { error: 'Já existe uma conta com este e-mail.' });
         if (name.length < 2 || name.length > 80) return send(res, 400, { error: 'Informe seu nome completo.' });
         const passwordData = await hashPassword(password);
-        user = { id: randomUUID(), name, email, passwordSalt: passwordData.salt, passwordHash: passwordData.hash, createdAt: new Date().toISOString() };
+        user = { id: randomUUID(), name, email, role: email === ADMIN_EMAIL ? 'admin' : 'user', active: true, passwordSalt: passwordData.salt, passwordHash: passwordData.hash, createdAt: new Date().toISOString() };
         account.users.push(user);
         stage = 'drive:write-user-index';
         await writeJsonFile('usuarios.json', account.loginsId, account.users);
         stage = 'drive:write-user-file';
         await writeJsonFile(`${user.id}.json`, account.usersId, createInitialInventory(user.id, { name: user.name, email: user.email, avatar: '' }));
-      } else if (!user || !(await verifyPassword(password, user.passwordSalt, user.passwordHash))) {
+      } else if (!user || user.active === false || !(await verifyPassword(password, user.passwordSalt, user.passwordHash))) {
         return send(res, 401, { error: 'E-mail ou senha incorretos.' });
       }
       setCookie(res, signSession(user));
@@ -260,9 +263,91 @@ export default async function handler(req, res) {
     }
 
     if (!session) return send(res, 401, { error: 'Faça login para continuar.' });
+    const account = await getUserFiles();
+    const currentUser = account.users.find((item) => item.id === session.sub);
+    if (!currentUser || currentUser.active === false || Number(session.sv || 0) !== Number(currentUser.sessionVersion || 0)) { setCookie(res, '', 0); return send(res, 401, { error: 'Esta sessão não está mais ativa. Entre novamente.' }); }
+    const currentRole = currentUser.email === ADMIN_EMAIL ? 'admin' : (currentUser.role || 'user');
+    if (currentUser.role !== currentRole) { currentUser.role = currentRole; await writeJsonFile('usuarios.json', account.loginsId, account.users); }
+    const isAdmin = currentRole === 'admin';
     const folders = await ensureFolders();
     const fileName = `${session.sub}.json`;
     let fileId = await findJsonFile(fileName, folders.usersId);
+
+
+    if (action === 'listManagedUsers') {
+      if (!isAdmin) return send(res, 403, { error: 'Somente o administrador pode consultar todas as contas.' });
+      return send(res, 200, { users: account.users.map(publicUser).sort((a, b) => (a.role === 'admin' ? -1 : a.role === 'supplier' ? -2 : 0) - (b.role === 'admin' ? -1 : b.role === 'supplier' ? -2 : 0) || a.name.localeCompare(b.name, 'pt-BR')) });
+    }
+
+    if (action === 'getSupplierDirectory') {
+      if (!['admin', 'supplier'].includes(currentRole)) return send(res, 403, { error: 'Acesso restrito à área de fornecedores.' });
+      const visibleUsers = isAdmin ? account.users : account.users.filter((item) => item.role === 'supplier');
+      return send(res, 200, { users: visibleUsers.map(publicUser) });
+    }
+
+    if (action === 'createManagedUser') {
+      if (!isAdmin) return send(res, 403, { error: 'Somente o administrador pode criar contas.' });
+      const name = String(body.name || '').trim();
+      const email = String(body.email || '').trim().toLowerCase();
+      const password = String(body.password || '');
+      const role = body.role === 'supplier' ? 'supplier' : 'user';
+      if (name.length < 2 || name.length > 80) return send(res, 400, { error: 'Informe um nome entre 2 e 80 caracteres.' });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) return send(res, 400, { error: 'Informe um e-mail válido.' });
+      if (password.length < 10 || password.length > 128) return send(res, 400, { error: 'A senha deve ter entre 10 e 128 caracteres.' });
+      if (account.users.some((item) => item.email === email)) return send(res, 409, { error: 'Já existe uma conta com este e-mail.' });
+      const passwordData = await hashPassword(password);
+      const createdUser = { id: randomUUID(), name, email, role, active: true, passwordSalt: passwordData.salt, passwordHash: passwordData.hash, createdAt: new Date().toISOString() };
+      account.users.push(createdUser);
+      await writeJsonFile('usuarios.json', account.loginsId, account.users);
+      await writeJsonFile(`${createdUser.id}.json`, account.usersId, createInitialInventory(createdUser.id, { name, email, avatar: '' }));
+      return send(res, 201, { success: true, user: publicUser(createdUser) });
+    }
+
+    if (action === 'updateManagedUser') {
+      if (!isAdmin) return send(res, 403, { error: 'Somente o administrador pode editar contas.' });
+      const target = account.users.find((item) => item.id === String(body.userId || ''));
+      if (!target || target.email === ADMIN_EMAIL) return send(res, 404, { error: 'Conta não encontrada ou protegida.' });
+      const name = String(body.name || '').trim();
+      const email = String(body.email || '').trim().toLowerCase();
+      const role = body.role === 'supplier' ? 'supplier' : 'user';
+      if (name.length < 2 || name.length > 80) return send(res, 400, { error: 'Informe um nome entre 2 e 80 caracteres.' });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) return send(res, 400, { error: 'Informe um e-mail válido.' });
+      if (email === ADMIN_EMAIL || account.users.some((item) => item.id !== target.id && item.email === email)) return send(res, 409, { error: 'Este e-mail já está em uso ou reservado.' });
+      target.name = name; target.email = email; target.role = role;
+      await writeJsonFile('usuarios.json', account.loginsId, account.users);
+      const targetFile = await findJsonFile(`${target.id}.json`, account.usersId);
+      if (targetFile) {
+        const inventory = await readJsonFile(targetFile);
+        inventory.profile = { ...(inventory.profile || {}), name, email };
+        inventory.updatedAt = new Date().toISOString();
+        await writeJsonFile(`${target.id}.json`, account.usersId, inventory);
+      }
+      return send(res, 200, { success: true, user: publicUser(target) });
+    }
+
+    if (action === 'resetManagedPassword') {
+      if (!isAdmin) return send(res, 403, { error: 'Somente o administrador pode redefinir senhas.' });
+      const target = account.users.find((item) => item.id === String(body.userId || ''));
+      const password = String(body.password || '');
+      if (!target || target.email === ADMIN_EMAIL) return send(res, 404, { error: 'Conta não encontrada ou protegida.' });
+      if (password.length < 10 || password.length > 128) return send(res, 400, { error: 'A nova senha deve ter entre 10 e 128 caracteres.' });
+      const passwordData = await hashPassword(password);
+      target.passwordSalt = passwordData.salt; target.passwordHash = passwordData.hash; target.sessionVersion = Number(target.sessionVersion || 0) + 1;
+      await writeJsonFile('usuarios.json', account.loginsId, account.users);
+      return send(res, 200, { success: true });
+    }
+
+    if (action === 'deleteManagedUser') {
+      if (!isAdmin) return send(res, 403, { error: 'Somente o administrador pode excluir contas.' });
+      const targetIndex = account.users.findIndex((item) => item.id === String(body.userId || ''));
+      if (targetIndex < 0 || account.users[targetIndex].email === ADMIN_EMAIL || account.users[targetIndex].id === session.sub) return send(res, 404, { error: 'Conta não encontrada ou protegida.' });
+      const target = account.users[targetIndex];
+      account.users.splice(targetIndex, 1);
+      await writeJsonFile('usuarios.json', account.loginsId, account.users);
+      const targetFile = await findJsonFile(`${target.id}.json`, account.usersId);
+      if (targetFile) await getDrive().files.update({ fileId: targetFile, requestBody: { trashed: true }, supportsAllDrives: true });
+      return send(res, 200, { success: true });
+    }
 
     if (action === 'getProfile') {
       const account = await getUserFiles();
