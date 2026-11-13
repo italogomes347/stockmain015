@@ -149,6 +149,9 @@ function parseCookies(req) {
 function send(res, status, payload) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.end(JSON.stringify(payload));
 }
 
@@ -188,6 +191,66 @@ const INITIAL_PRODUCTS = [
   { id: 'PRD-015', name: 'Monitor IPS 24 polegadas', sku: 'MON-IPS24', category: 'Informática', quantity: 10, minimum: 4, price: 799.90, status: 'Disponível' },
   { id: 'PRD-016', name: 'Mouse gamer RGB 7200 DPI', sku: 'MOU-G7200', category: 'Periféricos', quantity: 15, minimum: 6, price: 139.90, status: 'Disponível' }
 ];
+
+async function getOrCreateSharedInventory(folders, users) {
+  const sharedName = 'estoque-compartilhado.json';
+  let sharedId = await findJsonFile(sharedName, folders.usersId);
+  if (sharedId) return { id: sharedId, data: await readJsonFile(sharedId) };
+
+  // Migração única: preserva os arquivos individuais e cria um backup integral antes
+  // de consolidar os estoques em um único inventário compartilhado.
+  const legacy = [];
+  for (const user of users) {
+    const legacyId = await findJsonFile(`${user.id}.json`, folders.usersId);
+    if (!legacyId) continue;
+    try {
+      const data = await readJsonFile(legacyId);
+      if (data && (Array.isArray(data.products) || Array.isArray(data.activities))) {
+        legacy.push({ userId: user.id, email: user.email, data });
+      }
+    } catch (error) {
+      console.error('[StockMain] Não foi possível ler um estoque legado durante a migração:', String(error?.message || error));
+    }
+  }
+
+  const adminLegacy = legacy.find((item) => item.email === ADMIN_EMAIL);
+  const base = adminLegacy || legacy[0];
+  const productsById = new Map();
+  const activitiesById = new Map();
+  for (const entry of (base ? [base, ...legacy.filter((item) => item !== base)] : [])) {
+    for (const product of Array.isArray(entry.data.products) ? entry.data.products : []) {
+      const id = String(product?.id || '').trim();
+      if (id && !productsById.has(id)) productsById.set(id, product);
+    }
+    for (const activity of Array.isArray(entry.data.activities) ? entry.data.activities : []) {
+      const key = String(activity?.id || [activity?.type, activity?.title, activity?.detail, activity?.time].join('|'));
+      if (key && !activitiesById.has(key)) activitiesById.set(key, activity);
+    }
+  }
+
+  const now = new Date().toISOString();
+  const shared = {
+    userId: 'shared',
+    profile: null,
+    catalogVersion: 2,
+    initialized: true,
+    products: [...productsById.values()],
+    activities: [...activitiesById.values()].sort((a, b) => Date.parse(b?.createdAt || 0) - Date.parse(a?.createdAt || 0)).slice(0, 10000),
+    updatedAt: now
+  };
+
+  if (legacy.length) {
+    const backupName = `backup-migracao-estoques-${Date.now()}.json`;
+    await writeJsonFile(backupName, folders.usersId, {
+      createdAt: now,
+      note: 'Cópia integral dos arquivos individuais anteriores à consolidação. Os arquivos originais também foram preservados.',
+      inventories: legacy
+    });
+  }
+
+  sharedId = await writeJsonFile(sharedName, folders.usersId, shared);
+  return { id: sharedId, data: shared };
+}
 
 function createInitialInventory(userId, profile = null) {
   const now = new Date();
@@ -379,24 +442,14 @@ export default async function handler(req, res) {
     }
 
     if (action === 'getInventory') {
-      let data = fileId ? await readJsonFile(fileId) : null;
-      if (!data || (!data.initialized && (!Array.isArray(data.products) || data.products.length === 0))) {
-        const profile = data?.profile || { name: session.name, email: session.email, avatar: '' };
-        data = createInitialInventory(session.sub, profile);
-        fileId = await writeJsonFile(fileName, folders.usersId, data);
-      } else if (Number(data.catalogVersion || 0) < 2 && Array.isArray(data.products) && data.products.length === 6 && INITIAL_PRODUCTS.slice(0, 6).every((product) => data.products.some((existing) => existing.id === product.id))) {
-        const existingIds = new Set((Array.isArray(data.products) ? data.products : []).map((product) => product.id));
-        const newProducts = INITIAL_PRODUCTS.filter((product) => Number(String(product.id).replace('PRD-', '')) >= 7 && !existingIds.has(product.id));
-        data.products = [...(Array.isArray(data.products) ? data.products : []), ...newProducts.map((product) => ({ ...product }))];
-        data.catalogVersion = 2;
-        data.updatedAt = new Date().toISOString();
-        fileId = await writeJsonFile(fileName, folders.usersId, data);
-      }
-      return send(res, 200, data);
+      const shared = await getOrCreateSharedInventory(folders, account.users);
+      return send(res, 200, shared.data);
     }
 
     if (action === 'saveInventory') {
-      const currentData = fileId ? await readJsonFile(fileId) : null;
+      const shared = await getOrCreateSharedInventory(folders, account.users);
+      const sharedId = shared.id;
+      const currentData = shared.data;
       const expectedUpdatedAt = String(body.expectedUpdatedAt || '');
       if (expectedUpdatedAt && currentData?.updatedAt && expectedUpdatedAt !== currentData.updatedAt) {
         return send(res, 409, { error: 'Os dados foram atualizados em outro acesso. Sincronize e tente novamente.', conflict: true, updatedAt: currentData.updatedAt });
@@ -431,7 +484,11 @@ export default async function handler(req, res) {
         };
       });
       const data = { userId: session.sub, profile: currentData?.profile || null, catalogVersion: 2, initialized: true, products: safeProducts, activities: safeActivities, updatedAt: new Date().toISOString() };
-      await writeJsonFile(fileName, folders.usersId, data);
+      await getDrive().files.update({
+        fileId: sharedId,
+        media: { mimeType: 'application/json', body: Readable.from([JSON.stringify(data)]) },
+        supportsAllDrives: true
+      });
       return send(res, 200, { success: true, updatedAt: data.updatedAt });
     }
 
