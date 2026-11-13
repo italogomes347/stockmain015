@@ -157,6 +157,16 @@ function publicUser(user) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Método não permitido.' });
+  const origin = req.headers.origin;
+  if (origin) {
+    try {
+      const originHost = new URL(origin).host.toLowerCase();
+      const requestHost = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase();
+      if (!requestHost || originHost !== requestHost) return send(res, 403, { error: 'Origem da requisição não permitida.' });
+    } catch {
+      return send(res, 403, { error: 'Origem da requisição inválida.' });
+    }
+  }
   try {
     const body = await readBody(req);
     const action = String(body.action || '');
@@ -209,6 +219,11 @@ export default async function handler(req, res) {
       const products = Array.isArray(body.products) ? body.products : [];
       const activities = Array.isArray(body.activities) ? body.activities : [];
       if (products.length > 5000 || activities.length > 10000) return send(res, 413, { error: 'Limite de registros excedido.' });
+      const productIds = products.map((product) => String(product?.id || '').trim().toLocaleLowerCase('pt-BR'));
+      if (products.some((product) => !product || typeof product !== 'object' || !String(product.name || '').trim() || !String(product.category || '').trim() || !Number.isInteger(Number(product.quantity)) || Number(product.quantity) < 0 || !Number.isInteger(Number(product.minimum)) || Number(product.minimum) < 0 || !Number.isFinite(Number(product.price)) || Number(product.price) < 0 || !String(product.id || '').trim())) {
+        return send(res, 400, { error: 'Revise os dados dos produtos antes de salvar.' });
+      }
+      if (new Set(productIds).size !== productIds.length) return send(res, 409, { error: 'Existem códigos de produto duplicados.' });
       const safeProducts = products.map((product) => ({
         id: String(product.id || '').trim().slice(0, 30),
         name: String(product.name || '').trim().slice(0, 100),
