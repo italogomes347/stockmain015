@@ -448,7 +448,6 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
     try {
       const saved = await saveInventory({ products: nextProducts, activities: nextActivities, expectedUpdatedAt: lastUpdatedAt });
       setLastUpdatedAt(saved.updatedAt || '');
-      setDemoData(false);
       setStorageError('');
     } catch (error) {
       if (error.conflict) {
