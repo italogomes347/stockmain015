@@ -24,34 +24,43 @@ Sistema web de gestão de estoque desenvolvido com React, JavaScript e Vite.
 
 ## Armazenamento e autenticação
 
-O projeto não utiliza banco de dados. Os dados de cada conta são armazenados em arquivos JSON no Google Drive da aplicação.
+O projeto não utiliza banco de dados. Os dados das contas são armazenados em arquivos JSON no Google Drive, acessados exclusivamente pelo backend.
 
-O usuário final não precisa conectar uma conta Google, fazer login com Google ou autorizar acesso ao próprio Drive. A aplicação acessa uma pasta do Drive por meio de uma conta técnica configurada exclusivamente no servidor.
+O usuário final cria uma conta no StockMain com e-mail e senha. Ele não precisa conectar uma conta Google nem autorizar acesso ao próprio Drive.
 
-As senhas não são armazenadas em texto aberto. O backend gera hash com scrypt e utiliza uma sessão assinada em cookie HttpOnly.
+As senhas são armazenadas com hash derivado por scrypt e salt. A sessão é assinada no servidor e mantida em cookie HttpOnly. Credenciais e tokens do Google ficam somente nas variáveis de ambiente do backend; nunca devem ser enviados ao frontend ou versionados no Git.
 
-### Configuração do Google Drive
+## Configuração do Google Drive com OAuth 2.0
 
-1. Crie ou selecione um projeto no Google Cloud.
-2. Ative a Google Drive API.
-3. Crie uma conta de serviço e gere uma chave privada.
-4. Crie uma pasta raiz no Google Drive para os arquivos do StockMain.
-5. Compartilhe essa pasta raiz com o e-mail da conta de serviço, concedendo permissão de Editor.
-6. Copie o ID da pasta raiz pela URL do Drive.
-7. Configure as variáveis de ambiente no projeto da Vercel.
+A integração usa OAuth 2.0 de uma conta Google comum (não usa Service Account).
 
-Variáveis obrigatórias:
+1. Crie ou selecione um projeto no Google Cloud e ative a Google Drive API.
+2. Configure a tela de consentimento OAuth e crie um cliente OAuth do tipo **Aplicativo da Web**.
+3. Adicione como URI de redirecionamento autorizada exatamente a URL usada pelo ambiente:
+   - Produção: `https://stockmain015.vercel.app/api/oauth`
+   - Para outro domínio ou ambiente local, configure também a URI correspondente e defina a variável `GOOGLE_OAUTH_REDIRECT_URI` com essa mesma URL.
+4. Crie uma pasta raiz no Google Drive da conta que será usada pelo StockMain e copie o ID da pasta pela URL.
+5. Configure as variáveis abaixo no projeto da Vercel.
+6. Abra `https://stockmain015.vercel.app/api/oauth` no navegador, entre com a conta Google que será proprietária dos arquivos e conclua a autorização.
+7. A página de retorno exibirá o token de atualização. Copie-o diretamente para a variável sensível `GOOGLE_REFRESH_TOKEN` na Vercel. Não envie esse token por chat, e-mail ou commit.
+8. Faça um novo deploy após configurar as variáveis.
+
+### Variáveis de ambiente
 
 | Variável | Conteúdo |
 | --- | --- |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | E-mail da conta de serviço |
-| `GOOGLE_PRIVATE_KEY` | Chave privada da conta de serviço |
-| `GOOGLE_DRIVE_ROOT_FOLDER_ID` | ID da pasta raiz compartilhada |
-| `SESSION_SECRET` | Segredo aleatório forte para assinar as sessões |
+| `GOOGLE_CLIENT_ID` | ID do cliente OAuth 2.0 |
+| `GOOGLE_CLIENT_SECRET` | Segredo do cliente OAuth 2.0 |
+| `GOOGLE_REFRESH_TOKEN` | Token de atualização obtido no fluxo `/api/oauth` |
+| `GOOGLE_OAUTH_REDIRECT_URI` | URI completa de callback, terminando em `/api/oauth` |
+| `GOOGLE_DRIVE_ROOT_FOLDER_ID` | ID da pasta raiz do StockMain no Google Drive |
+| `SESSION_SECRET` | Segredo aleatório forte, com pelo menos 32 caracteres, para assinar as sessões |
 
-Configure essas variáveis nos ambientes necessários da Vercel: Production, Preview e Development. A chave privada e o segredo de sessão nunca devem ser enviados ao frontend, versionados no Git ou publicados.
+Configure as variáveis nos ambientes Vercel necessários (Production, Preview e Development). Marque credenciais e segredos como sensíveis. A `GOOGLE_OAUTH_REDIRECT_URI` deve corresponder exatamente à URI cadastrada no Google Cloud. O endpoint OAuth usa o domínio de produção padrão quando a variável não está definida, portanto configure-a explicitamente em previews e ambientes locais.
 
 O backend cria dentro da pasta raiz as pastas `Logins` e `Usuarios`. O arquivo `usuarios.json` mantém o índice das contas e cada conta possui seu próprio arquivo JSON de estoque.
+
+**Importante:** não publique tokens ou segredos no repositório. Se um segredo já foi exposto, revogue ou rotacione-o no provedor e atualize a variável na Vercel.
 
 ## Desenvolvimento
 
@@ -89,10 +98,10 @@ npm run lint
 
 ## Publicação
 
-A publicação final será realizada pela Vercel, conectando o repositório GitHub e configurando as quatro variáveis de ambiente obrigatórias. Não publique o sistema como GitHub Pages, pois a autenticação e o armazenamento dependem da função serverless em `api/index.js`.
+A publicação será realizada pela Vercel, conectando o repositório GitHub e configurando as variáveis de ambiente descritas acima. A branch de produção é `main`. Não publique o sistema como GitHub Pages, pois a autenticação e o armazenamento dependem das funções serverless em `api/`.
 
 ## Estado da implementação
 
-A integração de autenticação, armazenamento, cadastro de produtos, entradas e saídas está em desenvolvimento. Antes de considerar a aplicação pronta para produção, é necessário executar build, lint e testes reais de cadastro, login, persistência após recarga, isolamento entre contas e permissões do Drive.
+A integração de autenticação, armazenamento, cadastro de produtos, entradas e saídas está em desenvolvimento e precisa de validação no ambiente real. Antes de considerar a aplicação pronta para produção, execute build, lint e testes reais de cadastro, login, persistência após recarga, isolamento entre contas e permissões do Drive.
 
-Ainda precisam ser tratados e testados aspectos como limitação de tentativas de login e concorrência na atualização dos arquivos JSON. O módulo de fornecedores permanece apenas como área informativa nesta etapa.
+Também precisam ser tratados e testados aspectos como limitação de tentativas de login e concorrência na atualização dos arquivos JSON. O módulo de fornecedores permanece apenas como área informativa nesta etapa.
