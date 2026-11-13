@@ -167,7 +167,7 @@ function publicUser(user) {
   return { id: user.id, name: user.name, email: user.email };
 }
 
-const DEMO_PRODUCTS = [
+const INITIAL_PRODUCTS = [
   { id: 'PRD-001', name: 'Notebook Pro 15', sku: 'NTB-015', category: 'Informática', quantity: 24, minimum: 10, price: 4299.90, status: 'Disponível' },
   { id: 'PRD-002', name: 'Mouse sem fio', sku: 'MOU-002', category: 'Acessórios', quantity: 8, minimum: 12, price: 89.90, status: 'Estoque baixo' },
   { id: 'PRD-003', name: 'Teclado mecânico', sku: 'TEC-003', category: 'Acessórios', quantity: 36, minimum: 10, price: 249.90, status: 'Disponível' },
@@ -186,16 +186,15 @@ const DEMO_PRODUCTS = [
   { id: 'PRD-016', name: 'Mouse gamer RGB 7200 DPI', sku: 'MOU-G7200', category: 'Periféricos', quantity: 15, minimum: 6, price: 139.90, status: 'Disponível' }
 ];
 
-function createDemoInventory(userId, profile = null) {
+function createInitialInventory(userId, profile = null) {
   const now = new Date();
   const ago = (minutes) => new Date(now.getTime() - minutes * 60000).toISOString();
   return {
     userId,
     profile,
-    demoData: true,
-    demoCatalogVersion: 2,
+    catalogVersion: 2,
     initialized: true,
-    products: DEMO_PRODUCTS.map((product) => ({ ...product })),
+    products: INITIAL_PRODUCTS.map((product) => ({ ...product })),
     activities: [
       { id: randomUUID(), title: 'Entrada de produtos', detail: 'Reposição de 12 unidades · Notebook Pro 15', time: new Date(now.getTime() - 20 * 60000).toLocaleString('pt-BR'), type: 'entrada', createdAt: ago(20) },
       { id: randomUUID(), title: 'Saída de produtos', detail: 'Saída de 4 unidades · Teclado mecânico', time: new Date(now.getTime() - 55 * 60000).toLocaleString('pt-BR'), type: 'saida', createdAt: ago(55) },
@@ -252,7 +251,7 @@ export default async function handler(req, res) {
         stage = 'drive:write-user-index';
         await writeJsonFile('usuarios.json', account.loginsId, account.users);
         stage = 'drive:write-user-file';
-        await writeJsonFile(`${user.id}.json`, account.usersId, createDemoInventory(user.id, { name: user.name, email: user.email, avatar: '' }));
+        await writeJsonFile(`${user.id}.json`, account.usersId, createInitialInventory(user.id, { name: user.name, email: user.email, avatar: '' }));
       } else if (!user || !(await verifyPassword(password, user.passwordSalt, user.passwordHash))) {
         return send(res, 401, { error: 'E-mail ou senha incorretos.' });
       }
@@ -285,7 +284,7 @@ export default async function handler(req, res) {
       if (!accountUser) return send(res, 404, { error: 'Conta não encontrada.' });
       accountUser.name = name;
       await writeJsonFile('usuarios.json', account.loginsId, account.users);
-      const inventory = fileId ? await readJsonFile(fileId) : createDemoInventory(session.sub);
+      const inventory = fileId ? await readJsonFile(fileId) : createInitialInventory(session.sub);
       inventory.profile = { name, email: accountUser.email, avatar };
       inventory.updatedAt = new Date().toISOString();
       await writeJsonFile(fileName, folders.usersId, inventory);
@@ -297,13 +296,14 @@ export default async function handler(req, res) {
       let data = fileId ? await readJsonFile(fileId) : null;
       if (!data || (!data.initialized && (!Array.isArray(data.products) || data.products.length === 0))) {
         const profile = data?.profile || { name: session.name, email: session.email, avatar: '' };
-        data = createDemoInventory(session.sub, profile);
+        data = createInitialInventory(session.sub, profile);
         fileId = await writeJsonFile(fileName, folders.usersId, data);
-      } else if (data.demoData === true && Number(data.demoCatalogVersion || 1) < 2) {
+      } else if (data.demoData === true && Number(data.catalogVersion || 1) < 2) {
         const existingIds = new Set((Array.isArray(data.products) ? data.products : []).map((product) => product.id));
-        const newProducts = DEMO_PRODUCTS.filter((product) => Number(String(product.id).replace('PRD-', '')) >= 7 && !existingIds.has(product.id));
+        const newProducts = INITIAL_PRODUCTS.filter((product) => Number(String(product.id).replace('PRD-', '')) >= 7 && !existingIds.has(product.id));
         data.products = [...(Array.isArray(data.products) ? data.products : []), ...newProducts.map((product) => ({ ...product }))];
-        data.demoCatalogVersion = 2;
+        data.catalogVersion = 2;
+        delete data.demoData;
         data.updatedAt = new Date().toISOString();
         fileId = await writeJsonFile(fileName, folders.usersId, data);
       }
@@ -345,7 +345,7 @@ export default async function handler(req, res) {
           createdAt: item.createdAt && !Number.isNaN(Date.parse(item.createdAt)) ? new Date(item.createdAt).toISOString() : null
         };
       });
-      const data = { userId: session.sub, profile: currentData?.profile || null, demoData: false, initialized: true, products: safeProducts, activities: safeActivities, updatedAt: new Date().toISOString() };
+      const data = { userId: session.sub, profile: currentData?.profile || null, catalogVersion: 2, initialized: true, products: safeProducts, activities: safeActivities, updatedAt: new Date().toISOString() };
       await writeJsonFile(fileName, folders.usersId, data);
       return send(res, 200, { success: true, updatedAt: data.updatedAt });
     }
