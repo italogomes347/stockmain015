@@ -372,7 +372,6 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
       setProfileForm({ name: result.profile.name, avatar: result.profile.avatar || '' });
       onProfileUpdate?.(result.profile);
       setProfileMessage('Perfil atualizado com sucesso.');
-      if (result.updatedAt) { lastUpdatedAtRef.current = result.updatedAt; setLastUpdatedAt(result.updatedAt); }
     } catch (error) {
       setProfileMessage(error.message || 'Não foi possível salvar o perfil.');
     } finally {
@@ -448,10 +447,11 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
           const remote = await getInventory();
           setProducts(remote.products || []);
           setActivities(remote.activities || []);
+          lastUpdatedAtRef.current = remote.updatedAt || '';
           setLastUpdatedAt(remote.updatedAt || '');
           setStorageError('Outro acesso atualizou o estoque. Os dados mais recentes foram carregados; refaça sua alteração.');
         } catch {
-          setStorageError('Houve conflito de sincronização. Atualize a página e tente novamente.');
+          setStorageError('Não foi possível sincronizar agora. O sistema tentará novamente automaticamente em instantes.');
         }
       } else {
         setProducts(products);
@@ -499,10 +499,11 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
           const remote = await getInventory();
           setProducts(remote.products || []);
           setActivities(remote.activities || []);
+          lastUpdatedAtRef.current = remote.updatedAt || '';
           setLastUpdatedAt(remote.updatedAt || '');
           setStorageError('Outro acesso atualizou o estoque. Os dados mais recentes foram carregados; confira a quantidade antes de repetir a movimentação.');
         } catch {
-          setStorageError('Houve conflito de sincronização. Atualize a página e tente novamente.');
+          setStorageError('Não foi possível sincronizar agora. O sistema tentará novamente automaticamente em instantes.');
         }
       } else {
         setProducts(products);
