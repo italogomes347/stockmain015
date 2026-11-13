@@ -8,7 +8,7 @@ async function parseApiResponse(response) {
   }
 }
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ProductDialog from './components/ProductDialog.jsx';
 import ProductDetailsDialog from './components/ProductDetailsDialog.jsx';
 import SuppliersPanel from './components/SuppliersPanel.jsx';
@@ -281,6 +281,9 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem('stockmain-theme') === 'dark' ? 'dark' : 'light'; } catch { return 'light'; } });
   const [storageError, setStorageError] = useState('');
   const [lastUpdatedAt, setLastUpdatedAt] = useState('');
+  const lastUpdatedAtRef = useRef('');
+  const saveInFlightRef = useRef(false);
+  const pollInFlightRef = useRef(false);
   const [profileForm, setProfileForm] = useState({ name: user?.name || '', avatar: '' });
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
@@ -297,6 +300,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
         if (!active) return;
         setProducts(Array.isArray(data?.products) ? data.products : []);
         setActivities(Array.isArray(data?.activities) ? data.activities : []);
+        lastUpdatedAtRef.current = data?.updatedAt || '';
         setLastUpdatedAt(data?.updatedAt || '');
         const profile = profileData?.profile || {};
         setProfileForm({ name: profile.name || user?.name || '', avatar: profile.avatar || '' });
@@ -310,20 +314,33 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
   }, [user?.name]);
 
   useEffect(() => {
-    const intervalId = window.setInterval(async () => {
+    let active = true;
+    const syncInventory = async () => {
+      // Evita respostas antigas do polling sobrescreverem uma alteração local ainda sendo salva.
+      if (saveInFlightRef.current || pollInFlightRef.current) return;
+      pollInFlightRef.current = true;
       try {
         const remote = await getInventory();
-        if (remote?.updatedAt && remote.updatedAt !== lastUpdatedAt) {
+        if (!active || saveInFlightRef.current) return;
+        if (remote?.updatedAt && remote.updatedAt !== lastUpdatedAtRef.current) {
           setProducts(Array.isArray(remote.products) ? remote.products : []);
           setActivities(Array.isArray(remote.activities) ? remote.activities : []);
+          lastUpdatedAtRef.current = remote.updatedAt;
           setLastUpdatedAt(remote.updatedAt);
+          setStorageError('');
         }
       } catch {
-        // A próxima rodada de sincronização tentará novamente sem interromper o uso.
+        // Mantém a tela utilizável; a próxima rodada tenta sincronizar novamente.
+      } finally {
+        pollInFlightRef.current = false;
       }
-    }, 1500);
-    return () => window.clearInterval(intervalId);
-  }, [lastUpdatedAt]);
+    };
+    const intervalId = window.setInterval(syncInventory, 1500);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   const handleAvatarChange = (event) => {
     const file = event.target.files?.[0];
@@ -355,7 +372,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
       setProfileForm({ name: result.profile.name, avatar: result.profile.avatar || '' });
       onProfileUpdate?.(result.profile);
       setProfileMessage('Perfil atualizado com sucesso.');
-      if (result.updatedAt) setLastUpdatedAt(result.updatedAt);
+      if (result.updatedAt) { lastUpdatedAtRef.current = result.updatedAt; setLastUpdatedAt(result.updatedAt); }
     } catch (error) {
       setProfileMessage(error.message || 'Não foi possível salvar o perfil.');
     } finally {
@@ -419,8 +436,10 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
     setIsProductDialogOpen(false);
     setActivePage('Produtos');
     setSearchTerm('');
+    saveInFlightRef.current = true;
     try {
-      const saved = await saveInventory({ products: nextProducts, activities: nextActivities, expectedUpdatedAt: lastUpdatedAt });
+      const saved = await saveInventory({ products: nextProducts, activities: nextActivities, expectedUpdatedAt: lastUpdatedAtRef.current || lastUpdatedAt });
+      lastUpdatedAtRef.current = saved.updatedAt || '';
       setLastUpdatedAt(saved.updatedAt || '');
       setStorageError('');
     } catch (error) {
@@ -439,6 +458,8 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
         setActivities(activities);
         setStorageError(error.message || 'Não foi possível salvar no Google Drive. As alterações locais foram revertidas.');
       }
+    } finally {
+      saveInFlightRef.current = false;
     }
   };
 
@@ -466,8 +487,10 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
     setActivities(nextActivities);
     setIsMovementDialogOpen(false);
     setActivePage('Movimentações');
+    saveInFlightRef.current = true;
     try {
-      const saved = await saveInventory({ products: nextProducts, activities: nextActivities, expectedUpdatedAt: lastUpdatedAt });
+      const saved = await saveInventory({ products: nextProducts, activities: nextActivities, expectedUpdatedAt: lastUpdatedAtRef.current || lastUpdatedAt });
+      lastUpdatedAtRef.current = saved.updatedAt || '';
       setLastUpdatedAt(saved.updatedAt || '');
       setStorageError('');
     } catch (error) {
@@ -486,6 +509,8 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
         setActivities(activities);
         setStorageError(error.message || 'Não foi possível salvar a movimentação no Google Drive. A alteração local foi revertida.');
       }
+    } finally {
+      saveInFlightRef.current = false;
     }
   };
 
@@ -506,14 +531,33 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
     setProducts(nextProducts);
     setActivities(nextActivities);
     setSelectedProduct(null);
+    saveInFlightRef.current = true;
     try {
-      const saved = await saveInventory({ products: nextProducts, activities: nextActivities, expectedUpdatedAt: lastUpdatedAt });
+      const saved = await saveInventory({ products: nextProducts, activities: nextActivities, expectedUpdatedAt: lastUpdatedAtRef.current || lastUpdatedAt });
+      lastUpdatedAtRef.current = saved.updatedAt || '';
       setLastUpdatedAt(saved.updatedAt || '');
       setStorageError('');
     } catch (error) {
-      setProducts(previousProducts);
-      setActivities(previousActivities);
-      setStorageError(error.message || 'Não foi possível remover o produto. A alteração foi revertida.');
+      if (error.conflict) {
+        try {
+          const remote = await getInventory();
+          setProducts(Array.isArray(remote.products) ? remote.products : []);
+          setActivities(Array.isArray(remote.activities) ? remote.activities : []);
+          lastUpdatedAtRef.current = remote.updatedAt || '';
+          setLastUpdatedAt(remote.updatedAt || '');
+          setStorageError('O estoque foi alterado em outro acesso. Os dados mais recentes já foram sincronizados; confira e tente remover novamente.');
+        } catch {
+          setProducts(previousProducts);
+          setActivities(previousActivities);
+          setStorageError('Não foi possível sincronizar o conflito. Tente novamente em instantes.');
+        }
+      } else {
+        setProducts(previousProducts);
+        setActivities(previousActivities);
+        setStorageError(error.message || 'Não foi possível remover o produto. A alteração foi revertida.');
+      }
+    } finally {
+      saveInFlightRef.current = false;
     }
   };
 
