@@ -181,11 +181,76 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
   );
 }
 
+function MovementDialog({ products, onClose, onSave }) {
+  const [form, setForm] = useState({ productId: products[0]?.id || '', type: 'entrada', quantity: '1' });
+  const [error, setError] = useState('');
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const quantity = Number(form.quantity);
+    const product = products.find((item) => item.id === form.productId);
+    if (!product) {
+      setError('Selecione um produto.');
+      return;
+    }
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      setError('Informe uma quantidade inteira maior que zero.');
+      return;
+    }
+    if (form.type === 'saida' && quantity > product.quantity) {
+      setError('A saída não pode ser maior que a quantidade disponível.');
+      return;
+    }
+    onSave({ productId: form.productId, type: form.type, quantity });
+  };
+
+  return (
+    <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section className="product-dialog" role="dialog" aria-modal="true" aria-labelledby="movement-dialog-title">
+        <header className="product-dialog__header">
+          <div className="product-dialog__title">
+            <span><ArrowLeftRight size={21} /></span>
+            <div><h2 id="movement-dialog-title">Registrar movimentação</h2><p>Atualize a quantidade disponível no estoque.</p></div>
+          </div>
+          <button className="icon-button" type="button" aria-label="Fechar movimentação" onClick={onClose}><X size={19} /></button>
+        </header>
+        <form className="product-form" onSubmit={handleSubmit}>
+          <label className="product-form__field product-form__field--wide">
+            <span>Produto</span>
+            <select value={form.productId} onChange={(event) => { setForm((current) => ({ ...current, productId: event.target.value })); setError(''); }} required>
+              {products.map((product) => <option key={product.id} value={product.id}>{product.name} · disponível: {product.quantity}</option>)}
+            </select>
+          </label>
+          <label className="product-form__field">
+            <span>Tipo</span>
+            <select value={form.type} onChange={(event) => { setForm((current) => ({ ...current, type: event.target.value })); setError(''); }}>
+              <option value="entrada">Entrada</option>
+              <option value="saida">Saída</option>
+            </select>
+          </label>
+          <label className="product-form__field">
+            <span>Quantidade</span>
+            <input type="number" min="1" step="1" value={form.quantity} onChange={(event) => { setForm((current) => ({ ...current, quantity: event.target.value })); setError(''); }} required />
+          </label>
+          {error && <p className="product-form__error" role="alert"><AlertTriangle size={16} />{error}</p>}
+          <footer className="product-form__actions">
+            <button className="button button--secondary" type="button" onClick={onClose}>Cancelar</button>
+            <button className="button button--primary" type="submit" disabled={!products.length}>Salvar movimentação</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 function InventoryApp({ user, onLogout }) {
   const [activePage, setActivePage] = useState('Visão geral');
   const [products, setProducts] = useState([]);
   const [activities, setActivities] = useState([]);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
+  const [isMovementDialogOpen, setIsMovementDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -261,6 +326,38 @@ function InventoryApp({ user, onLogout }) {
       setStorageError('');
     } catch {
       setStorageError('O produto foi incluído nesta sessão, mas não foi possível salvá-lo no Google Drive.');
+    }
+  };
+
+  const handleStockMovement = async ({ productId, type, quantity }) => {
+    const selectedProduct = products.find((product) => product.id === productId);
+    if (!selectedProduct) return;
+    const nextQuantity = type === 'entrada' ? selectedProduct.quantity + quantity : selectedProduct.quantity - quantity;
+    if (nextQuantity < 0) {
+      setStorageError('A quantidade de saída excede o estoque disponível.');
+      return;
+    }
+    const updatedProduct = { ...selectedProduct, quantity: nextQuantity };
+    updatedProduct.status = getProductStatus(updatedProduct);
+    const nextProducts = products.map((product) => product.id === productId ? updatedProduct : product);
+    const newActivity = {
+      id: crypto.randomUUID(),
+      title: type === 'entrada' ? 'Entrada de produtos' : 'Saída de produtos',
+      detail: `${quantity} unidade(s) · ${selectedProduct.name}`,
+      time: new Date().toLocaleString('pt-BR'),
+      type,
+      createdAt: new Date().toISOString()
+    };
+    const nextActivities = [newActivity, ...activities].slice(0, 500);
+    setProducts(nextProducts);
+    setActivities(nextActivities);
+    setIsMovementDialogOpen(false);
+    setActivePage('Movimentações');
+    try {
+      await saveInventory({ products: nextProducts, activities: nextActivities });
+      setStorageError('');
+    } catch {
+      setStorageError('A movimentação foi aplicada nesta sessão, mas não foi possível salvá-la no Google Drive.');
     }
   };
 
@@ -477,7 +574,7 @@ function InventoryApp({ user, onLogout }) {
           )}
           {activePage === 'Movimentações' && (
             <>
-              <section className="welcome-section"><div><div className="eyebrow"><Activity size={14} /> HISTÓRICO</div><h1>Movimentações</h1><p>Consulte as atividades registradas na sua conta.</p></div></section>
+              <section className="welcome-section"><div><div className="eyebrow"><Activity size={14} /> HISTÓRICO</div><h1>Movimentações</h1><p>Consulte as atividades registradas na sua conta.</p></div><div className="welcome-section__actions"><button className="button button--primary" type="button" onClick={() => setIsMovementDialogOpen(true)} disabled={!products.length}><Plus size={17} /> Nova movimentação</button></div></section>
               <article className="panel activity-panel">
                 <div className="panel__header"><div><h2>Histórico de atividades</h2><p>{activities.length} registro(s) armazenado(s)</p></div></div>
                 <div className="activity-list">
@@ -524,6 +621,7 @@ function InventoryApp({ user, onLogout }) {
             <Menu size={20} strokeWidth={1.9} /><span>Mais</span>
           </button>
         </nav>
+        {isMovementDialogOpen && <MovementDialog products={products} onClose={() => setIsMovementDialogOpen(false)} onSave={handleStockMovement} />}
         {isProductDialogOpen && (
           <ProductDialog
             onClose={() => setIsProductDialogOpen(false)}
