@@ -110,7 +110,7 @@ function MobileProductCard({ product, onSelectProduct }) {
   );
 }
 
-function MobileWorkspace({ user, activePage, products, activities, filteredProducts, productsCount, movementsToday, searchTerm, setSearchTerm, selectPage, onCreateProduct, onSelectProduct, profileForm, setProfileForm, onAvatarChange, onProfileSave, profileBusy, profileMessage }) {
+function MobileWorkspace({ user, activePage, products, activities, filteredProducts, productsCount, movementsToday, searchTerm, setSearchTerm, selectPage, onCreateProduct, onSelectProduct, exportReport, profileForm, setProfileForm, onAvatarChange, onProfileSave, profileBusy, profileMessage }) {
   let content;
 
   if (activePage === 'Visão geral') {
@@ -807,7 +807,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
           )}
         </div>
         </div>
-        <MobileWorkspace user={user} activePage={activePage} products={products} activities={activities} filteredProducts={filteredProducts} productsCount={products.length} movementsToday={movementsToday} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} onSelectProduct={setSelectedProduct} profileForm={profileForm} setProfileForm={setProfileForm} onAvatarChange={handleAvatarChange} onProfileSave={handleProfileSave} profileBusy={profileBusy} profileMessage={profileMessage} />
+        <MobileWorkspace user={user} activePage={activePage} products={products} activities={activities} filteredProducts={filteredProducts} productsCount={products.length} movementsToday={movementsToday} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} onSelectProduct={setSelectedProduct} exportReport={exportReport} profileForm={profileForm} setProfileForm={setProfileForm} onAvatarChange={handleAvatarChange} onProfileSave={handleProfileSave} profileBusy={profileBusy} profileMessage={profileMessage} />
         <nav className="mobile-bottom-nav" aria-label="Navegação mobile">
           {mobileTabs.filter(({ label }) => label !== 'Fornecedores' || ['admin', 'supplier'].includes(user?.role)).map(({ label, icon: Icon }) => (
             <button className={`mobile-bottom-nav__item ${activePage === label ? 'mobile-bottom-nav__item--active' : ''}`} key={label} type="button" onClick={() => selectPage(label)} aria-current={activePage === label ? 'page' : undefined}>
