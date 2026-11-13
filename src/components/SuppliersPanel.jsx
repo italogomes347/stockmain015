@@ -24,15 +24,23 @@ export default function SuppliersPanel({ role = 'user' }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const refresh = useCallback(async () => {
-    setLoading(true); setError('');
+  const refresh = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       const result = await request(admin ? 'listManagedUsers' : 'getSupplierDirectory');
       setUsers(result.users || []);
-    } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
+      if (!quiet) setError('');
+    } catch (e) {
+      if (!quiet) setError(e.message);
+    } finally {
+      if (!quiet) setLoading(false);
+    }
   }, [admin]);
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+    const intervalId = window.setInterval(() => refresh(true), 5000);
+    return () => window.clearInterval(intervalId);
+  }, [refresh]);
 
   const create = () => { setEditing(null); setForm(blank); setFormOpen(true); setResetTarget(null); setError(''); };
   const edit = (item) => { setEditing(item); setForm({ name: item.name, email: item.email, password: '', role: item.role === 'supplier' ? 'supplier' : 'user' }); setFormOpen(true); setResetTarget(null); setError(''); };
