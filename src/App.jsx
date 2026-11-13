@@ -101,7 +101,7 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
           <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--blue"><Package size={18} /></span><small>Produtos cadastrados</small><strong>{productsCount.toLocaleString('pt-BR')}</strong><span>Produtos cadastrados</span></article>
           <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--violet"><ShoppingCart size={18} /></span><small>Valor em estoque</small><strong>{formatCurrency(calculateInventory(products))}</strong><span>Valor calculado</span></article>
           <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--amber"><AlertTriangle size={18} /></span><small>Estoque baixo</small><strong>{lowStock.length.toLocaleString('pt-BR')}</strong><span>Precisam de atenção</span></article>
-          <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--green"><Activity size={18} /></span><small>Movimentações</small><strong>{movementsToday.toLocaleString('pt-BR')}</strong><span>Registros hoje</span></article>
+          <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--green"><Activity size={18} /></span><small>Atividades hoje</small><strong>{movementsToday.toLocaleString('pt-BR')}</strong><span>Registros salvos</span></article>
         </div>
         <section className="mobile-section">
           <div className="mobile-section__heading"><div><h2>Acesso rápido</h2><p>O que você deseja fazer?</p></div></div>
@@ -132,9 +132,9 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
   } else if (activePage === 'Movimentações') {
     content = (
       <section className="mobile-section mobile-section--first">
-        <div className="mobile-summary-card"><span>Movimentações registradas hoje</span><strong>{movementsToday.toLocaleString('pt-BR')}</strong><small>Registros salvos hoje</small></div>
+        <div className="mobile-summary-card"><span>Atividades registradas hoje</span><strong>{movementsToday.toLocaleString('pt-BR')}</strong><small>Registros salvos hoje</small></div>
         <div className="mobile-section__heading"><div><h2>Histórico recente</h2><p>Histórico salvo nesta conta</p></div></div>
-        <div className="mobile-activity-list">{activities.map((activity, index) => <div className="mobile-activity" key={activity.id || `${activity.title}-${index}`}><span className={`mobile-activity__icon mobile-activity__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span><div><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div></div>)}</div>
+        <div className="mobile-activity-list">{activities.length ? activities.map((activity, index) => <div className="mobile-activity" key={activity.id || `${activity.title}-${index}`}><span className={`mobile-activity__icon mobile-activity__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span><div><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div></div>) : <div className="mobile-empty"><Activity size={22} /><strong>Nenhuma atividade registrada</strong><span>Os novos registros aparecerão aqui.</span></div>}</div>
         <div className="mobile-note">O histórico apresenta os registros salvos nesta conta.</div>
       </section>
     );
@@ -293,7 +293,7 @@ function InventoryApp({ user, onLogout }) {
           <span className="workspace-switcher__avatar">SM</span>
           <span className="workspace-switcher__copy">
             <strong>Minha empresa</strong>
-            <small>Plano de demonstração</small>
+            <small>Conta individual</small>
           </span>
           <ChevronDown size={16} />
         </div>
@@ -401,7 +401,7 @@ function InventoryApp({ user, onLogout }) {
             <MetricCard label="Total de produtos" value={products.length.toLocaleString('pt-BR')} detail="itens cadastrados" trend="up" icon={Package} tone="blue" />
             <MetricCard label="Valor em estoque" value={formatCurrency(inventoryValue)} detail="valor calculado" trend="up" icon={ShoppingCart} tone="violet" />
             <MetricCard label="Estoque baixo" value={lowStockCount.toLocaleString('pt-BR')} detail="itens em atenção" trend="down" icon={AlertTriangle} tone="amber" />
-            <MetricCard label="Movimentações hoje" value={movementsToday.toLocaleString('pt-BR')} detail="registros hoje" trend="up" icon={Activity} tone="green" />
+            <MetricCard label="Atividades hoje" value={movementsToday.toLocaleString('pt-BR')} detail="registros hoje" trend="up" icon={Activity} tone="green" />
           </section>
 
           <section className="content-grid">
@@ -433,7 +433,7 @@ function InventoryApp({ user, onLogout }) {
             <article className="panel activity-panel">
               <div className="panel__header"><div><h2>Atividade recente</h2><p>Últimas atualizações do estoque.</p></div><button className="icon-button" type="button" aria-label="Mais opções"><ChevronDown size={17} /></button></div>
               <div className="activity-list">
-                {activities.map((activity, index) => (
+                {activities.length ? activities.map((activity, index) => (
                   <div className="activity-item" key={activity.id || `${activity.title}-${index}`}>
                     <span className={`activity-item__icon activity-item__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span>
                     <div className="activity-item__content"><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div>
