@@ -57,8 +57,7 @@ const navigation = [
   { label: 'Movimentações', icon: Activity },
   { label: 'Categorias', icon: Boxes },
   { label: 'Fornecedores', icon: Users },
-  { label: 'Relatórios', icon: TrendingUp },
-  { label: 'Fornecedores', icon: Users }
+  { label: 'Relatórios', icon: TrendingUp }
 ];
 
 
