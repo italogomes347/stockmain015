@@ -1,3 +1,13 @@
+async function parseApiResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`O servidor retornou uma resposta inválida (HTTP ${response.status}). Verifique os registros da API na Vercel.`);
+  }
+}
+
 import { useEffect, useMemo, useState } from 'react';
 import ProductDialog from './components/ProductDialog.jsx';
 import { getInventory, saveInventory, getProfile, updateProfile } from './services/api.js';
@@ -784,7 +794,7 @@ function App() {
       signal: controller.signal
     })
       .then(async (response) => {
-        const data = await response.json();
+        const data = await parseApiResponse(response);
         if (!response.ok) throw new Error(data.error || 'Não foi possível verificar sua sessão.');
         return data;
       })
