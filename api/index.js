@@ -1,7 +1,9 @@
-import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
 import { Readable } from 'node:stream';
 import { google } from 'googleapis';
 
+const scryptAsync = promisify(scrypt);
 const COOKIE_NAME = 'stockmain_session';
 const SESSION_DURATION = 60 * 60 * 12;
 const ROOT_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
@@ -79,12 +81,14 @@ async function writeJsonFile(name, parentId, value) {
   return created.data.id;
 }
 
-function hashPassword(password, salt = randomBytes(16).toString('hex')) {
-  return { salt, hash: scryptSync(password, salt, 64).toString('hex') };
+async function hashPassword(password, salt = randomBytes(16).toString('hex')) {
+  const derivedKey = await scryptAsync(password, salt, 64);
+  return { salt, hash: derivedKey.toString('hex') };
 }
 
-function verifyPassword(password, salt, expectedHash) {
-  const actual = Buffer.from(hashPassword(password, salt).hash, 'hex');
+async function verifyPassword(password, salt, expectedHash) {
+  if (!salt || !/^[a-f0-9]{128}$/i.test(String(expectedHash || ''))) return false;
+  const actual = await scryptAsync(password, salt, 64);
   const expected = Buffer.from(expectedHash, 'hex');
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
@@ -116,7 +120,8 @@ function readSession(token) {
 }
 
 function setCookie(res, value, maxAge = SESSION_DURATION) {
-  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${value}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAge}`);
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${value}; HttpOnly${secure}; SameSite=Lax; Path=/; Max-Age=${maxAge}`);
 }
 
 function parseCookies(req) {
@@ -178,12 +183,12 @@ export default async function handler(req, res) {
       if (action === 'register') {
         if (user) return send(res, 409, { error: 'Já existe uma conta com este e-mail.' });
         if (name.length < 2 || name.length > 80) return send(res, 400, { error: 'Informe seu nome completo.' });
-        const passwordData = hashPassword(password);
+        const passwordData = await hashPassword(password);
         user = { id: randomUUID(), name, email, passwordSalt: passwordData.salt, passwordHash: passwordData.hash, createdAt: new Date().toISOString() };
         account.users.push(user);
         await writeJsonFile('usuarios.json', account.loginsId, account.users);
         await writeJsonFile(`${user.id}.json`, account.usersId, { userId: user.id, products: [], activities: [], updatedAt: new Date().toISOString() });
-      } else if (!user || !verifyPassword(password, user.passwordSalt, user.passwordHash)) {
+      } else if (!user || !(await verifyPassword(password, user.passwordSalt, user.passwordHash))) {
         return send(res, 401, { error: 'E-mail ou senha incorretos.' });
       }
       setCookie(res, signSession(user));
@@ -205,15 +210,24 @@ export default async function handler(req, res) {
       const activities = Array.isArray(body.activities) ? body.activities : [];
       if (products.length > 5000 || activities.length > 10000) return send(res, 413, { error: 'Limite de registros excedido.' });
       const safeProducts = products.map((product) => ({
-        id: String(product.id || '').slice(0, 30),
-        name: String(product.name || '').slice(0, 100),
+        id: String(product.id || '').trim().slice(0, 30),
+        name: String(product.name || '').trim().slice(0, 100),
+        sku: String(product.sku || '').trim().slice(0, 30),
         category: String(product.category || '').slice(0, 60),
         quantity: Math.max(0, Math.floor(Number(product.quantity) || 0)),
         minimum: Math.max(0, Math.floor(Number(product.minimum) || 0)),
         price: Math.max(0, Number(product.price) || 0),
         status: String(product.status || '').slice(0, 30)
       }));
-      const data = { userId: session.sub, products: safeProducts, activities, updatedAt: new Date().toISOString() };
+      const safeActivities = activities.slice(0, 10000).map((activity) => ({
+        id: String(activity.id || randomUUID()).slice(0, 80),
+        title: String(activity.title || '').slice(0, 100),
+        detail: String(activity.detail || '').slice(0, 240),
+        time: String(activity.time || '').slice(0, 60),
+        type: ['entrada', 'saida', 'ajuste'].includes(activity.type) ? activity.type : 'ajuste',
+        createdAt: activity.createdAt && !Number.isNaN(Date.parse(activity.createdAt)) ? new Date(activity.createdAt).toISOString() : null
+      }));
+      const data = { userId: session.sub, products: safeProducts, activities: safeActivities, updatedAt: new Date().toISOString() };
       await writeJsonFile(fileName, folders.usersId, data);
       return send(res, 200, { success: true, updatedAt: data.updatedAt });
     }
