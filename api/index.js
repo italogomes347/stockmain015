@@ -291,7 +291,17 @@ export default async function handler(req, res) {
     const session = readSession(cookies[COOKIE_NAME]);
 
     if (action === 'session') {
-      return session ? send(res, 200, { authenticated: true, user: { id: session.sub, name: session.name, email: session.email, role: session.email === ADMIN_EMAIL ? 'admin' : (session.role || 'user') } }) : send(res, 200, { authenticated: false });
+      if (!session) return send(res, 200, { authenticated: false });
+      const account = await getUserFiles();
+      const currentUser = account.users.find((item) => item.id === session.sub);
+      if (!currentUser || currentUser.active === false || Number(session.sv || 0) !== Number(currentUser.sessionVersion || 0)) {
+        setCookie(res, '', 0);
+        return send(res, 200, { authenticated: false });
+      }
+      // O perfil e a permissão são sempre lidos do índice atual do Drive,
+      // nunca do papel antigo congelado no cookie de login.
+      const currentRole = currentUser.email === ADMIN_EMAIL ? 'admin' : (currentUser.role || 'user');
+      return send(res, 200, { authenticated: true, user: publicUser({ ...currentUser, role: currentRole }) });
     }
 
     if (action === 'logout') {
