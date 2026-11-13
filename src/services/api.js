@@ -1,3 +1,15 @@
+async function parseResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      error: `O servidor retornou uma resposta inválida (HTTP ${response.status}). Tente novamente em instantes.`
+    };
+  }
+}
+
 async function request(action, payload = {}) {
   const response = await fetch('/api', {
     method: 'POST',
@@ -5,7 +17,7 @@ async function request(action, payload = {}) {
     credentials: 'same-origin',
     body: JSON.stringify({ action, ...payload })
   });
-  const data = await response.json().catch(() => ({}));
+  const data = await parseResponse(response);
   if (!response.ok) {
     const error = new Error(data.error || 'Falha na comunicação com o StockMain.');
     error.status = response.status;
