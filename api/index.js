@@ -298,12 +298,11 @@ export default async function handler(req, res) {
         const profile = data?.profile || { name: session.name, email: session.email, avatar: '' };
         data = createInitialInventory(session.sub, profile);
         fileId = await writeJsonFile(fileName, folders.usersId, data);
-      } else if (data.demoData === true && Number(data.catalogVersion || 1) < 2) {
+      } else if (Number(data.catalogVersion || 0) < 2 && Array.isArray(data.products) && data.products.length === 6 && INITIAL_PRODUCTS.slice(0, 6).every((product) => data.products.some((existing) => existing.id === product.id))) {
         const existingIds = new Set((Array.isArray(data.products) ? data.products : []).map((product) => product.id));
         const newProducts = INITIAL_PRODUCTS.filter((product) => Number(String(product.id).replace('PRD-', '')) >= 7 && !existingIds.has(product.id));
         data.products = [...(Array.isArray(data.products) ? data.products : []), ...newProducts.map((product) => ({ ...product }))];
         data.catalogVersion = 2;
-        delete data.demoData;
         data.updatedAt = new Date().toISOString();
         fileId = await writeJsonFile(fileName, folders.usersId, data);
       }
