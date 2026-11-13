@@ -156,7 +156,7 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
     content = (
       <section className="mobile-section mobile-section--first">
         <div className="mobile-summary-card"><span>Resumo de desempenho</span><strong>{formatCurrency(calculateInventory(products))}</strong><small>Valor calculado do estoque</small></div>
-        <div className="mobile-report-grid"><article><TrendingUp size={19} /><small>Produtos ativos</small><strong>{productsCount.toLocaleString('pt-BR')}</strong></article><article><AlertTriangle size={19} /><small>Itens em alerta</small><strong>{products.filter((product) => product.quantity <= product.minimum).length.toLocaleString('pt-BR')}</strong></article><article><ArrowDownRight size={19} /><small>Entradas hoje</small><strong>{activities.filter((activity) => activity.type === 'entrada').length.toLocaleString('pt-BR')}</strong></article><article><ArrowUpRight size={19} /><small>Saídas hoje</small><strong>{activities.filter((activity) => activity.type === 'saida').length.toLocaleString('pt-BR')}</strong></article></div>
+        <div className="mobile-report-grid"><article><TrendingUp size={19} /><small>Produtos ativos</small><strong>{productsCount.toLocaleString('pt-BR')}</strong></article><article><AlertTriangle size={19} /><small>Itens em alerta</small><strong>{products.filter((product) => product.quantity <= product.minimum).length.toLocaleString('pt-BR')}</strong></article><article><ArrowDownRight size={19} /><small>Entradas hoje</small><strong>{activities.filter((activity) => activity.type === 'entrada' && activity.createdAt && new Date(activity.createdAt).toLocaleDateString('pt-BR') === new Date().toLocaleDateString('pt-BR')).length.toLocaleString('pt-BR')}</strong></article><article><ArrowUpRight size={19} /><small>Saídas hoje</small><strong>{activities.filter((activity) => activity.type === 'saida' && activity.createdAt && new Date(activity.createdAt).toLocaleDateString('pt-BR') === new Date().toLocaleDateString('pt-BR')).length.toLocaleString('pt-BR')}</strong></article></div>
         <button className="mobile-primary-action" type="button" onClick={() => window.print()}><Download size={17} /> Exportar resumo</button>
         <div className="mobile-note">Os indicadores são calculados com base nos dados salvos nesta conta.</div>
       </section>
@@ -437,7 +437,7 @@ function InventoryApp({ user, onLogout }) {
                   <div className="activity-item" key={activity.id || `${activity.title}-${index}`}>
                     <span className={`activity-item__icon activity-item__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span>
                     <div className="activity-item__content"><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div>
-                    {index < initialActivities.length - 1 && <span className="activity-item__line" />}
+                    {index < activities.length - 1 && <span className="activity-item__line" />}
                   </div>
                 ))}
               </div>
