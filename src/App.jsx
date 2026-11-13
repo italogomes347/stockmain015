@@ -642,13 +642,38 @@ function App() {
   const [authLoading, setAuthLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'session' }), credentials: 'same-origin' })
-      .then((response) => response.json())
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 10000);
+
+    fetch('/api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'session' }),
+      credentials: 'same-origin',
+      signal: controller.signal
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Não foi possível verificar sua sessão.');
+        return data;
+      })
       .then((data) => {
         if (data.authenticated) setSession(data);
       })
-      .catch(() => setAuthError('Não foi possível verificar sua sessão. Tente novamente.'))
-      .finally(() => setCheckingSession(false));
+      .catch((error) => {
+        setAuthError(error.name === 'AbortError'
+          ? 'O servidor demorou para responder. Verifique a conexão e tente novamente.'
+          : error.message || 'Não foi possível verificar sua sessão. Tente novamente.');
+      })
+      .finally(() => {
+        window.clearTimeout(timeoutId);
+        setCheckingSession(false);
+      });
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, []);
 
   const updateAuthField = (event) => {
