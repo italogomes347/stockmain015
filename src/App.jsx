@@ -389,6 +389,12 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
     );
   }, [products, searchTerm]);
 
+  useEffect(() => {
+    if (activePage === 'Fornecedores' && !['admin', 'supplier'].includes(user?.role)) {
+      setActivePage('Visão geral');
+    }
+  }, [activePage, user?.role]);
+
   const selectPage = (page) => {
     if (page === 'Fornecedores' && !['admin', 'supplier'].includes(user?.role)) return;
     setActivePage(page);
