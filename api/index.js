@@ -266,7 +266,7 @@ export default async function handler(req, res) {
       const name = String(body.name || '').trim();
       const avatar = String(body.avatar || '');
       if (name.length < 2 || name.length > 80) return send(res, 400, { error: 'O nome deve ter entre 2 e 80 caracteres.' });
-      if (avatar && (!/^data:image\\/(png|jpeg|webp|gif);base64,/.test(avatar) || avatar.length > 1400000)) {
+      if (avatar && (!/^data:image\/(png|jpeg|webp|gif);base64,/.test(avatar) || avatar.length > 1400000)) {
         return send(res, 400, { error: 'A foto deve ser PNG, JPG, WEBP ou GIF e ter no máximo 1 MB.' });
       }
       const account = await getUserFiles();
