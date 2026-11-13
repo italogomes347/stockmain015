@@ -171,7 +171,7 @@ export default async function handler(req, res) {
       const email = String(body.email || '').trim().toLowerCase();
       const password = String(body.password || '');
       const name = String(body.name || '').trim();
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email) || email.length > 254) return send(res, 400, { error: 'Informe um e-mail válido.' });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) return send(res, 400, { error: 'Informe um e-mail válido.' });
       if (password.length < 10 || password.length > 128) return send(res, 400, { error: 'A senha deve ter entre 10 e 128 caracteres.' });
       const account = await getUserFiles();
       let user = account.users.find((item) => item.email === email);
