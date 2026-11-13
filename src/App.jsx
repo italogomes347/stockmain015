@@ -700,6 +700,26 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
               <section className="welcome-section"><div><div className="eyebrow"><TrendingUp size={14} /> INDICADORES</div><h1>Relatórios</h1><p>Resumo calculado a partir dos dados da sua conta.</p></div><div className="welcome-section__actions"><button className="button button--secondary" type="button" onClick={() => window.print()}><Download size={16} /> Exportar</button></div></section>
               <section className="metrics-grid"><MetricCard label="Produtos cadastrados" value={products.length.toLocaleString('pt-BR')} detail="total atual" trend="up" icon={Package} tone="blue" /><MetricCard label="Valor em estoque" value={formatCurrency(inventoryValue)} detail="valor calculado" trend="up" icon={ShoppingCart} tone="violet" /><MetricCard label="Estoque baixo" value={lowStockCount.toLocaleString('pt-BR')} detail="itens em atenção" trend="down" icon={AlertTriangle} tone="amber" /><MetricCard label="Atividades hoje" value={movementsToday.toLocaleString('pt-BR')} detail="registros salvos" trend="up" icon={Activity} tone="green" /></section>
               <article className="panel"><div className="panel__header"><div><h2>Produtos que precisam de atenção</h2><p>Itens com quantidade igual ou inferior ao estoque mínimo.</p></div></div><div className="table-wrap"><table className="products-table"><thead><tr><th>PRODUTO</th><th>QUANTIDADE</th><th>ESTOQUE MÍNIMO</th><th>STATUS</th></tr></thead><tbody>{products.filter((product) => product.quantity <= product.minimum).map((product) => <tr key={product.id}><td><strong>{product.name}</strong></td><td>{product.quantity}</td><td>{product.minimum}</td><td>{getProductStatus(product)}</td></tr>)}{!lowStockCount && <tr><td className="empty-state" colSpan="4">Nenhum produto abaixo do estoque mínimo.</td></tr>}</tbody></table></div></article>
+              <section className="content-grid report-detail-grid">
+                <article className="panel">
+                  <div className="panel__header"><div><h2>Estoque por categoria</h2><p>Quantidade e valor estimado dos itens cadastrados.</p></div></div>
+                  <div className="table-wrap"><table className="products-table"><thead><tr><th>CATEGORIA</th><th>PRODUTOS</th><th>UNIDADES</th><th>VALOR</th></tr></thead><tbody>
+                    {[...new Set(products.map((product) => product.category).filter(Boolean))].sort().map((category) => {
+                      const items = products.filter((product) => product.category === category);
+                      return <tr key={category}><td><strong>{category}</strong></td><td>{items.length}</td><td>{items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</td><td>{formatCurrency(items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.price || 0), 0))}</td></tr>;
+                    })}
+                    {!products.length && <tr><td className="empty-state" colSpan="4">Cadastre produtos para gerar este relatório.</td></tr>}
+                  </tbody></table></div>
+                </article>
+                <article className="panel">
+                  <div className="panel__header"><div><h2>Resumo de movimentações</h2><p>Registros armazenados nesta conta.</p></div></div>
+                  <div className="report-movement-summary">
+                    <div><span className="activity-item__icon activity-item__icon--entrada"><ArrowDownRight size={17} /></span><span><small>Entradas</small><strong>{activities.filter((item) => item.type === 'entrada').length}</strong></span></div>
+                    <div><span className="activity-item__icon activity-item__icon--saida"><ArrowUpRight size={17} /></span><span><small>Saídas</small><strong>{activities.filter((item) => item.type === 'saida').length}</strong></span></div>
+                    <div><span className="activity-item__icon"><Activity size={17} /></span><span><small>Ajustes e cadastros</small><strong>{activities.filter((item) => item.type === 'ajuste').length}</strong></span></div>
+                  </div>
+                </article>
+              </section>
             </>
           )}
           {activePage === 'Configurações' && (
