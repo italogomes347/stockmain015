@@ -167,9 +167,11 @@ export default async function handler(req, res) {
       return send(res, 403, { error: 'Origem da requisição inválida.' });
     }
   }
+  let stage = 'read-request';
   try {
     const body = await readBody(req);
     const action = String(body.action || '');
+    stage = `action:${action || 'unknown'}`;
     const cookies = parseCookies(req);
     const session = readSession(cookies[COOKIE_NAME]);
 
@@ -188,6 +190,7 @@ export default async function handler(req, res) {
       const name = String(body.name || '').trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) return send(res, 400, { error: 'Informe um e-mail válido.' });
       if (password.length < 10 || password.length > 128) return send(res, 400, { error: 'A senha deve ter entre 10 e 128 caracteres.' });
+      stage = 'drive:prepare-folders-and-read-index';
       const account = await getUserFiles();
       let user = account.users.find((item) => item.email === email);
       if (action === 'register') {
@@ -196,7 +199,9 @@ export default async function handler(req, res) {
         const passwordData = await hashPassword(password);
         user = { id: randomUUID(), name, email, passwordSalt: passwordData.salt, passwordHash: passwordData.hash, createdAt: new Date().toISOString() };
         account.users.push(user);
+        stage = 'drive:write-user-index';
         await writeJsonFile('usuarios.json', account.loginsId, account.users);
+        stage = 'drive:write-user-file';
         await writeJsonFile(`${user.id}.json`, account.usersId, { userId: user.id, products: [], activities: [], updatedAt: new Date().toISOString() });
       } else if (!user || !(await verifyPassword(password, user.passwordSalt, user.passwordHash))) {
         return send(res, 401, { error: 'E-mail ou senha incorretos.' });
@@ -252,6 +257,12 @@ export default async function handler(req, res) {
 
     return send(res, 400, { error: 'Ação desconhecida.' });
   } catch (error) {
+    console.error('[StockMain API] Request failed', {
+      stage,
+      code: error?.code ?? null,
+      status: error?.response?.status ?? error?.status ?? null,
+      message: String(error?.message || 'Unknown error').slice(0, 300)
+    });
     const message = error.message?.includes('Configuração do servidor') ? error.message : 'Não foi possível concluir a operação. Verifique a configuração do Google Drive.';
     return send(res, 500, { error: message });
   }
