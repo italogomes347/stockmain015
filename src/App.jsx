@@ -529,7 +529,8 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
     link.remove();
     URL.revokeObjectURL(url);
   };
-\n  const lowStockCount = products.filter((product) => product.quantity <= product.minimum).length;
+
+  const lowStockCount = products.filter((product) => product.quantity <= product.minimum).length;
   const inventoryValue = calculateInventory(products);
   const today = new Date().toLocaleDateString('pt-BR');
   const movementsToday = activities.filter((activity) => activity.createdAt && new Date(activity.createdAt).toLocaleDateString('pt-BR') === today).length;
