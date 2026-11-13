@@ -143,7 +143,7 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
         <div className="mobile-section__heading"><div><h2>Catálogo de produtos</h2><p>Gerencie os itens do seu estoque</p></div><button type="button" onClick={onCreateProduct}><Plus size={15} /> Novo</button></div>
         <div className="mobile-search"><Search size={17} /><input type="search" placeholder="Buscar por nome, código ou categoria" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></div>
         <div className="mobile-filter-summary"><span>{filteredProducts.length} de {productsCount} produtos</span><button type="button" onClick={() => setSearchTerm('')}>Limpar busca</button></div>
-        <div className="mobile-card-list">{filteredProducts.map((product) => <MobileProductCard key={product.id} product={product} />)}{filteredProducts.length === 0 && <div className="mobile-empty"><Package size={25} /><strong>Nenhum produto encontrado</strong><span>Tente outro nome ou código.</span></div>}</div>
+        <div className="mobile-card-list">{filteredProducts.map((product) => <MobileProductCard key={product.id} product={product} onSelectProduct={onSelectProduct} />)}{filteredProducts.length === 0 && <div className="mobile-empty"><Package size={25} /><strong>Nenhum produto encontrado</strong><span>Tente outro nome ou código.</span></div>}</div>
       </section>
     );
   } else if (activePage === 'Movimentações') {
@@ -732,7 +732,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
                 <div className="panel__header"><div><h2>Todos os produtos</h2><p>{filteredProducts.length} produto(s) encontrado(s)</p></div></div>
                 <div className="table-wrap">
                   <table className="products-table">
-                    <thead><tr><th>CÓDIGO</th><th>PRODUTO</th><th>CATEGORIA</th><th>QUANTIDADE</th><th>PREÇO</th><th>STATUS</th></tr></thead>
+                    <thead><tr><th>CÓDIGO</th><th>PRODUTO</th><th>CATEGORIA</th><th>QUANTIDADE</th><th>PREÇO</th><th>STATUS</th><th>AÇÕES</th></tr></thead>
                     <tbody>
                       {filteredProducts.map((product) => <tr key={product.id}><td>{product.id}</td><td><strong>{product.name}</strong></td><td>{product.category}</td><td>{product.quantity} / mín. {product.minimum}</td><td>{formatCurrency(product.price)}</td><td><span className={`status-pill status-pill--${product.status === 'Disponível' ? 'success' : product.status === 'Estoque baixo' ? 'warning' : 'danger'}`}><span />{product.status}</span></td><td><div className="product-row-actions"><button className="button button--secondary button--compact" type="button" onClick={() => setSelectedProduct(product)}><Eye size={14} /> Ver detalhes</button><button className="icon-button product-delete-button" type="button" title={`Excluir ${product.name}`} aria-label={`Excluir ${product.name}`} onClick={() => handleDeleteProduct(product)}><Trash2 size={16} /></button></div></td></tr>)}
                       {!filteredProducts.length && <tr><td className="empty-state" colSpan="7">Nenhum produto encontrado. Cadastre seu primeiro produto.</td></tr>}
