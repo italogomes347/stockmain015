@@ -426,7 +426,9 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
           setStorageError('Houve conflito de sincronização. Atualize a página e tente novamente.');
         }
       } else {
-        setStorageError(error.message || 'Não foi possível salvar no Google Drive.');
+        setProducts(products);
+        setActivities(activities);
+        setStorageError(error.message || 'Não foi possível salvar no Google Drive. As alterações locais foram revertidas.');
       }
     }
   };
@@ -471,7 +473,9 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
           setStorageError('Houve conflito de sincronização. Atualize a página e tente novamente.');
         }
       } else {
-        setStorageError(error.message || 'Não foi possível salvar a movimentação no Google Drive.');
+        setProducts(products);
+        setActivities(activities);
+        setStorageError(error.message || 'Não foi possível salvar a movimentação no Google Drive. A alteração local foi revertida.');
       }
     }
   };
@@ -579,13 +583,14 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
             <div className="notification-wrap">
               <button className="icon-button notification-button" type="button" aria-label="Notificações" onClick={() => setShowNotifications((current) => !current)}>
                 <Bell size={19} />
-                <span className="notification-button__dot" />
+                {lowStockCount > 0 && <span className="notification-button__dot" />}
               </button>
               {showNotifications && (
                 <div className="notification-popover">
                   <div className="notification-popover__heading"><strong>Notificações</strong><button className="icon-button" type="button" aria-label="Fechar notificações" onClick={() => setShowNotifications(false)}><X size={16} /></button></div>
-                  <p><AlertTriangle size={16} /> Existem produtos com estoque abaixo do mínimo.</p>
-                  <small>Confira os alertas na visão geral.</small>
+                  <p><AlertTriangle size={16} /> {lowStockCount ? `${lowStockCount} produto(s) precisam de reposição.` : "Nenhum produto precisa de reposição agora."}</p>
+                  {products.filter((product) => product.quantity <= product.minimum).slice(0, 5).map((product) => <button className="notification-stock-item" type="button" key={product.id} onClick={() => { setSelectedProduct(product); setShowNotifications(false); }}><span>{product.name}</span><strong>{product.quantity} / mín. {product.minimum}</strong></button>)}
+                  <small>Selecione um produto para consultar os detalhes e registrar uma reposição.</small>
                 </div>
               )}
             </div>
