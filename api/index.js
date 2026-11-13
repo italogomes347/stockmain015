@@ -314,6 +314,13 @@ export default async function handler(req, res) {
       if (email === ADMIN_EMAIL || account.users.some((item) => item.id !== target.id && item.email === email)) return send(res, 409, { error: 'Este e-mail já está em uso ou reservado.' });
       target.name = name; target.email = email; target.role = role;
       await writeJsonFile('usuarios.json', account.loginsId, account.users);
+      const targetFile = await findJsonFile(`${target.id}.json`, account.usersId);
+      if (targetFile) {
+        const inventory = await readJsonFile(targetFile);
+        inventory.profile = { ...(inventory.profile || {}), name, email };
+        inventory.updatedAt = new Date().toISOString();
+        await writeJsonFile(`${target.id}.json`, account.usersId, inventory);
+      }
       return send(res, 200, { success: true, user: publicUser(target) });
     }
 
