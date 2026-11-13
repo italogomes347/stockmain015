@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import ProductDialog from './components/ProductDialog.jsx';
 import { getInventory, saveInventory } from './services/api.js';
-import { initialProducts, initialActivities, categoryData, supplierData } from './data/initialData.js';
+import { categoryData, supplierData } from './data/initialData.js';
 import { calculateInventory, createProductId, formatCurrency, getProductStatus } from './utils/inventory.js';
 import {
   Activity,
@@ -90,7 +90,7 @@ function MobileProductCard({ product }) {
   );
 }
 
-function MobileWorkspace({ activePage, products, filteredProducts, productsCount, searchTerm, setSearchTerm, selectPage, onCreateProduct }) {
+function MobileWorkspace({ activePage, products, activities, filteredProducts, productsCount, movementsToday, searchTerm, setSearchTerm, selectPage, onCreateProduct }) {
   let content;
 
   if (activePage === 'Visão geral') {
@@ -98,10 +98,10 @@ function MobileWorkspace({ activePage, products, filteredProducts, productsCount
     content = (
       <>
         <div className="mobile-metrics">
-          <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--blue"><Package size={18} /></span><small>Produtos cadastrados</small><strong>1.284</strong><span>+8,2% este mês</span></article>
-          <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--violet"><ShoppingCart size={18} /></span><small>Valor em estoque</small><strong>R$ 84,5 mil</strong><span>+5,4% este mês</span></article>
-          <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--amber"><AlertTriangle size={18} /></span><small>Estoque baixo</small><strong>12</strong><span>Precisam de atenção</span></article>
-          <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--green"><Activity size={18} /></span><small>Movimentações</small><strong>48</strong><span>Realizadas hoje</span></article>
+          <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--blue"><Package size={18} /></span><small>Produtos cadastrados</small><strong>{productsCount.toLocaleString('pt-BR')}</strong><span>Produtos cadastrados</span></article>
+          <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--violet"><ShoppingCart size={18} /></span><small>Valor em estoque</small><strong>{formatCurrency(calculateInventory(products))}</strong><span>Valor calculado</span></article>
+          <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--amber"><AlertTriangle size={18} /></span><small>Estoque baixo</small><strong>{lowStock.length.toLocaleString('pt-BR')}</strong><span>Precisam de atenção</span></article>
+          <article className="mobile-metric"><span className="mobile-metric__icon mobile-metric__icon--green"><Activity size={18} /></span><small>Movimentações</small><strong>{movementsToday.toLocaleString('pt-BR')}</strong><span>Registros hoje</span></article>
         </div>
         <section className="mobile-section">
           <div className="mobile-section__heading"><div><h2>Acesso rápido</h2><p>O que você deseja fazer?</p></div></div>
@@ -116,7 +116,7 @@ function MobileWorkspace({ activePage, products, filteredProducts, productsCount
         </section>
         <section className="mobile-section">
           <div className="mobile-section__heading"><div><h2>Atividade recente</h2><p>Últimas atualizações registradas</p></div><button type="button" onClick={() => selectPage('Movimentações')}>Histórico <ArrowRight size={14} /></button></div>
-          <div className="mobile-activity-list">{initialActivities.slice(0, 2).map((activity) => <div className="mobile-activity" key={activity.title}><span className={`mobile-activity__icon mobile-activity__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span><div><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div></div>)}</div>
+          <div className="mobile-activity-list">{activities.slice(0, 2).map((activity, index) => <div className="mobile-activity" key={activity.id || `${activity.title}-${index}`}><span className={`mobile-activity__icon mobile-activity__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span><div><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div></div>)}</div>
         </section>
       </>
     );
@@ -132,10 +132,10 @@ function MobileWorkspace({ activePage, products, filteredProducts, productsCount
   } else if (activePage === 'Movimentações') {
     content = (
       <section className="mobile-section mobile-section--first">
-        <div className="mobile-summary-card"><span>Movimentações registradas hoje</span><strong>48</strong><small>Entradas, saídas e ajustes de estoque</small></div>
-        <div className="mobile-section__heading"><div><h2>Histórico recente</h2><p>Registros demonstrativos</p></div></div>
-        <div className="mobile-activity-list">{initialActivities.map((activity) => <div className="mobile-activity" key={activity.title}><span className={`mobile-activity__icon mobile-activity__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span><div><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div></div>)}</div>
-        <div className="mobile-note">Os registros desta versão são exemplos para apresentação. O histórico real será conectado ao armazenamento do sistema.</div>
+        <div className="mobile-summary-card"><span>Movimentações registradas hoje</span><strong>{movementsToday.toLocaleString('pt-BR')}</strong><small>Registros salvos hoje</small></div>
+        <div className="mobile-section__heading"><div><h2>Histórico recente</h2><p>Histórico salvo nesta conta</p></div></div>
+        <div className="mobile-activity-list">{activities.map((activity, index) => <div className="mobile-activity" key={activity.id || `${activity.title}-${index}`}><span className={`mobile-activity__icon mobile-activity__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span><div><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div></div>)}</div>
+        <div className="mobile-note">O histórico apresenta os registros salvos nesta conta.</div>
       </section>
     );
   } else if (activePage === 'Categorias') {
@@ -155,10 +155,10 @@ function MobileWorkspace({ activePage, products, filteredProducts, productsCount
   } else if (activePage === 'Relatórios') {
     content = (
       <section className="mobile-section mobile-section--first">
-        <div className="mobile-summary-card"><span>Resumo de desempenho</span><strong>R$ 84,5 mil</strong><small>Valor demonstrativo total em estoque</small></div>
-        <div className="mobile-report-grid"><article><TrendingUp size={19} /><small>Produtos ativos</small><strong>1.284</strong></article><article><AlertTriangle size={19} /><small>Itens em alerta</small><strong>12</strong></article><article><ArrowDownRight size={19} /><small>Entradas hoje</small><strong>26</strong></article><article><ArrowUpRight size={19} /><small>Saídas hoje</small><strong>22</strong></article></div>
+        <div className="mobile-summary-card"><span>Resumo de desempenho</span><strong>{formatCurrency(calculateInventory(products))}</strong><small>Valor calculado do estoque</small></div>
+        <div className="mobile-report-grid"><article><TrendingUp size={19} /><small>Produtos ativos</small><strong>{productsCount.toLocaleString('pt-BR')}</strong></article><article><AlertTriangle size={19} /><small>Itens em alerta</small><strong>{products.filter((product) => product.quantity <= product.minimum).length.toLocaleString('pt-BR')}</strong></article><article><ArrowDownRight size={19} /><small>Entradas hoje</small><strong>{activities.filter((activity) => activity.type === 'entrada').length.toLocaleString('pt-BR')}</strong></article><article><ArrowUpRight size={19} /><small>Saídas hoje</small><strong>{activities.filter((activity) => activity.type === 'saida').length.toLocaleString('pt-BR')}</strong></article></div>
         <button className="mobile-primary-action" type="button" onClick={() => window.print()}><Download size={17} /> Exportar resumo</button>
-        <div className="mobile-note">Indicadores ilustrativos. Os relatórios serão alimentados pelos registros reais quando os módulos forem conectados.</div>
+        <div className="mobile-note">Os indicadores são calculados com base nos dados salvos nesta conta.</div>
       </section>
     );
   } else if (activePage === 'Configurações') {
@@ -183,7 +183,8 @@ function MobileWorkspace({ activePage, products, filteredProducts, productsCount
 
 function InventoryApp({ user, onLogout }) {
   const [activePage, setActivePage] = useState('Visão geral');
-  const [products, setProducts] = useState(initialProducts);
+  const [products, setProducts] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -195,12 +196,8 @@ function InventoryApp({ user, onLogout }) {
     getInventory()
       .then(async (data) => {
         if (!active) return;
-        if (Array.isArray(data?.products) && data.products.length > 0) {
-          setProducts(data.products);
-        } else {
-          setProducts(initialProducts);
-          await saveInventory({ products: initialProducts, activities: initialActivities });
-        }
+        setProducts(Array.isArray(data?.products) ? data.products : []);
+        setActivities(Array.isArray(data?.activities) ? data.activities : []);
       })
       .catch(() => {
         if (active) setStorageError('Não foi possível sincronizar os dados com o Google Drive.');
@@ -232,7 +229,7 @@ function InventoryApp({ user, onLogout }) {
     if (!term) return products;
     return products.filter((product) =>
       [product.id, product.name, product.category, product.status]
-        .some((value) => value.toLocaleLowerCase('pt-BR').includes(term))
+        .some((value) => String(value ?? '').toLocaleLowerCase('pt-BR').includes(term))
     );
   }, [products, searchTerm]);
 
@@ -245,12 +242,22 @@ function InventoryApp({ user, onLogout }) {
     const id = product.id || createProductId(products);
     const newProduct = { ...product, id, status: getProductStatus(product) };
     const nextProducts = [newProduct, ...products];
+    const newActivity = {
+      id: crypto.randomUUID(),
+      title: 'Produto cadastrado',
+      detail: `${newProduct.name} · ${newProduct.quantity} unidades adicionadas`,
+      time: new Date().toLocaleString('pt-BR'),
+      type: 'ajuste',
+      createdAt: new Date().toISOString()
+    };
+    const nextActivities = [newActivity, ...activities].slice(0, 500);
     setProducts(nextProducts);
+    setActivities(nextActivities);
     setIsProductDialogOpen(false);
     setActivePage('Produtos');
     setSearchTerm('');
     try {
-      await saveInventory({ products: nextProducts, activities: initialActivities });
+      await saveInventory({ products: nextProducts, activities: nextActivities });
       setStorageError('');
     } catch {
       setStorageError('O produto foi incluído nesta sessão, mas não foi possível salvá-lo no Google Drive.');
@@ -259,6 +266,8 @@ function InventoryApp({ user, onLogout }) {
 
   const lowStockCount = products.filter((product) => product.quantity <= product.minimum).length;
   const inventoryValue = calculateInventory(products);
+  const today = new Date().toLocaleDateString('pt-BR');
+  const movementsToday = activities.filter((activity) => activity.createdAt && new Date(activity.createdAt).toLocaleDateString('pt-BR') === today).length;
 
   return (
     <div className="app-shell">
@@ -392,7 +401,7 @@ function InventoryApp({ user, onLogout }) {
             <MetricCard label="Total de produtos" value={products.length.toLocaleString('pt-BR')} detail="itens cadastrados" trend="up" icon={Package} tone="blue" />
             <MetricCard label="Valor em estoque" value={formatCurrency(inventoryValue)} detail="valor calculado" trend="up" icon={ShoppingCart} tone="violet" />
             <MetricCard label="Estoque baixo" value={lowStockCount.toLocaleString('pt-BR')} detail="itens em atenção" trend="down" icon={AlertTriangle} tone="amber" />
-            <MetricCard label="Movimentações hoje" value="48" detail="12,5%" trend="up" icon={Activity} tone="green" />
+            <MetricCard label="Movimentações hoje" value={movementsToday.toLocaleString('pt-BR')} detail="registros hoje" trend="up" icon={Activity} tone="green" />
           </section>
 
           <section className="content-grid">
@@ -418,14 +427,14 @@ function InventoryApp({ user, onLogout }) {
                   </tbody>
                 </table>
               </div>
-              <div className="panel__footer"><span>Exibindo {filteredProducts.length} de {products.length} produtos de demonstração</span><button className="text-button" type="button" onClick={() => setSearchTerm('')}>Limpar busca</button></div>
+              <div className="panel__footer"><span>Exibindo {filteredProducts.length} de {products.length} produtos</span><button className="text-button" type="button" onClick={() => setSearchTerm('')}>Limpar busca</button></div>
             </article>
 
             <article className="panel activity-panel">
               <div className="panel__header"><div><h2>Atividade recente</h2><p>Últimas atualizações do estoque.</p></div><button className="icon-button" type="button" aria-label="Mais opções"><ChevronDown size={17} /></button></div>
               <div className="activity-list">
-                {initialActivities.map((activity, index) => (
-                  <div className="activity-item" key={activity.title}>
+                {activities.map((activity, index) => (
+                  <div className="activity-item" key={activity.id || `${activity.title}-${index}`}>
                     <span className={`activity-item__icon activity-item__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span>
                     <div className="activity-item__content"><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div>
                     {index < initialActivities.length - 1 && <span className="activity-item__line" />}
@@ -438,13 +447,13 @@ function InventoryApp({ user, onLogout }) {
 
           <section className="insight-banner">
             <span className="insight-banner__icon"><TrendingUp size={20} /></span>
-            <div><strong>Uma visão mais clara do seu negócio</strong><p>Os indicadores e registros exibidos nesta primeira versão são demonstrativos e serão conectados aos dados reais do sistema nas próximas etapas.</p></div>
+            <div><strong>Uma visão mais clara do seu negócio</strong><p>Os indicadores são calculados a partir dos produtos e registros salvos na sua conta.</p></div>
             <button className="icon-button" type="button" aria-label="Entendi"><X size={17} /></button>
           </section>
 
           <footer className="page-footer"><span>© 2026 StockMain</span><span>Gestão inteligente de estoque</span></footer>
         </div>
-        <MobileWorkspace activePage={activePage} products={products} filteredProducts={filteredProducts} productsCount={products.length} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} />
+        <MobileWorkspace activePage={activePage} products={products} activities={activities} filteredProducts={filteredProducts} productsCount={products.length} movementsToday={movementsToday} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} />
         <nav className="mobile-bottom-nav" aria-label="Navegação mobile">
           {mobileTabs.map(({ label, icon: Icon }) => (
             <button className={`mobile-bottom-nav__item ${activePage === label ? 'mobile-bottom-nav__item--active' : ''}`} key={label} type="button" onClick={() => selectPage(label)} aria-current={activePage === label ? 'page' : undefined}>
