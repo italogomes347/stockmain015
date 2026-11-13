@@ -2070,3 +2070,33 @@ button:disabled {
 @media(max-width:520px){.product-details-grid{padding:16px;gap:9px}.product-detail-history{padding:0 16px 16px}.product-detail-actions{padding:0 16px 18px;flex-wrap:wrap}}
 
 .app-shell[data-theme=dark] .notification-stock-item{color:#d8e2f2;border-color:#34445e}.notification-stock-item{display:flex;width:100%;justify-content:space-between;gap:10px;padding:9px 0;border:0;border-top:1px solid #edf0f5;color:#536078;background:transparent;text-align:left;cursor:pointer;font-size:10px}.notification-stock-item strong{flex:0 0 auto;color:#c18a32;font-size:10px}
+
+/* Relatórios: hierarquia visual e cards de movimentação */
+.report-detail-grid{align-items:stretch;gap:18px}
+.report-detail-grid>.panel{min-width:0;overflow:hidden}
+.report-movement-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 22px 16px}
+.report-movement-heading h2{margin:5px 0 6px;color:#25324a;font-size:17px;font-weight:800;letter-spacing:-.35px}
+.report-movement-heading p{margin:0;color:#8994a7;font-size:11px;line-height:1.6}
+.report-section-kicker{color:#7184cf;font-size:9px;font-weight:800;letter-spacing:1.15px}
+.report-total-badge{flex:0 0 auto;padding:7px 10px;border:1px solid #e8ecf5;border-radius:20px;color:#65718a;background:#f8f9fc;font-size:10px;font-weight:700}
+.report-movement-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:0 22px 22px}
+.report-movement-card{display:flex;align-items:flex-start;gap:11px;min-width:0;padding:15px 12px;border:1px solid #edf0f5;border-radius:12px;background:#fbfcff}
+.report-movement-card__icon{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border-radius:10px}
+.report-movement-card--entry .report-movement-card__icon{color:#16845d;background:#e5f7ef}
+.report-movement-card--exit .report-movement-card__icon{color:#d15b65;background:#fff0f0}
+.report-movement-card--adjust .report-movement-card__icon{color:#6879c9;background:#eef0ff}
+.report-movement-card__copy{display:grid;gap:4px;min-width:0}
+.report-movement-card__copy small{color:#7f8ba0;font-size:10px}
+.report-movement-card__copy strong{color:#25324a;font-size:23px;line-height:1.1;font-weight:800}
+.report-movement-card__copy em{color:#a0a9b8;font-size:9px;font-style:normal;line-height:1.35}
+.button--compact{min-height:31px;padding:0 9px;font-size:10px;white-space:nowrap}
+.product-row-actions{display:flex;align-items:center;gap:7px}
+.product-delete-button{width:32px;height:32px;color:#c45b65}
+.product-delete-button:hover{color:#a83240;background:#fff0f1}
+.mobile-product-details-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:34px;margin-top:10px;border:1px solid #e3e8f4;border-radius:8px;color:#5268c8;background:#f8f9ff;font-size:11px;font-weight:700}
+@media(max-width:900px){.report-movement-summary{grid-template-columns:1fr}.report-movement-card{align-items:center}}
+@media(max-width:520px){.report-movement-heading{padding:17px 16px 13px}.report-movement-summary{padding:0 16px 17px}.report-movement-card__copy strong{font-size:21px}}
+.app-shell[data-theme=dark] .report-movement-heading h2,.app-shell[data-theme=dark] .report-movement-card__copy strong{color:#edf2fb}
+.app-shell[data-theme=dark] .report-total-badge,.app-shell[data-theme=dark] .report-movement-card{color:#cbd5e1;background:#202d42;border-color:#34445e}
+.app-shell[data-theme=dark] .report-movement-card__copy small,.app-shell[data-theme=dark] .report-movement-card__copy em,.app-shell[data-theme=dark] .report-movement-heading p{color:#9aa9bf}
+@media print{.welcome-section__actions,.sidebar,.topbar,.mobile-bottom-nav,.product-row-actions{display:none!important}.page-content{padding:0!important}.panel{break-inside:avoid;box-shadow:none!important}}
