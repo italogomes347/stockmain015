@@ -389,6 +389,12 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
     );
   }, [products, searchTerm]);
 
+  useEffect(() => {
+    if (activePage === 'Fornecedores' && !['admin', 'supplier'].includes(user?.role)) {
+      setActivePage('Visão geral');
+    }
+  }, [activePage, user?.role]);
+
   const selectPage = (page) => {
     if (page === 'Fornecedores' && !['admin', 'supplier'].includes(user?.role)) return;
     setActivePage(page);
@@ -875,6 +881,47 @@ function App() {
     };
   }, []);
 
+  // Mantém o papel/permissões da sessão sincronizados com o cadastro no Drive.
+  // Assim, quando o administrador promove alguém a fornecedor, a navegação muda
+  // automaticamente sem exigir logout ou recarregar a página.
+  useEffect(() => {
+    if (!session?.user?.id) return undefined;
+    let active = true;
+    let checking = false;
+    const syncSession = async () => {
+      if (checking) return;
+      checking = true;
+      try {
+        const response = await fetch('/api', {
+          method: 'POST',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+          body: JSON.stringify({ action: 'session' })
+        });
+        const data = await parseApiResponse(response);
+        if (!active) return;
+        if (!response.ok || !data.authenticated) {
+          setSession(null);
+          return;
+        }
+        setSession((current) => {
+          if (!current || current.user?.id !== data.user?.id) return current;
+          return { ...current, user: data.user };
+        });
+      } catch {
+        // Falhas transitórias não encerram a sessão; a próxima rodada tenta novamente.
+      } finally {
+        checking = false;
+      }
+    };
+    const intervalId = window.setInterval(syncSession, 3000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [session?.user?.id]);
+
   const updateAuthField = (event) => {
     setAuthForm((current) => ({ ...current, [event.target.name]: event.target.value }));
     setAuthError('');
@@ -933,7 +980,7 @@ function App() {
             <button className="button button--primary auth-submit" type="submit" disabled={authLoading}>{authLoading ? 'Aguarde...' : authMode === 'login' ? 'Entrar' : 'Criar conta'}</button>
           </form>
           <p className="auth-switch">{authMode === 'login' ? 'Ainda não tem conta?' : 'Já possui uma conta?'} <button type="button" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}> {authMode === 'login' ? 'Criar conta' : 'Fazer login'}</button></p>
-          <p className="auth-security">Seus dados de estoque são separados por conta e armazenados no Google Drive da aplicação.</p>
+          <p className="auth-security">O estoque é compartilhado entre as contas autorizadas e armazenado no Google Drive da aplicação.</p>
         </section>
       </main>
     );
