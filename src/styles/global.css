@@ -2100,3 +2100,8 @@ button:disabled {
 .app-shell[data-theme=dark] .report-total-badge,.app-shell[data-theme=dark] .report-movement-card{color:#cbd5e1;background:#202d42;border-color:#34445e}
 .app-shell[data-theme=dark] .report-movement-card__copy small,.app-shell[data-theme=dark] .report-movement-card__copy em,.app-shell[data-theme=dark] .report-movement-heading p{color:#9aa9bf}
 @media print{.welcome-section__actions,.sidebar,.topbar,.mobile-bottom-nav,.product-row-actions{display:none!important}.page-content{padding:0!important}.panel{break-inside:avoid;box-shadow:none!important}}
+
+.mobile-report-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+.mobile-primary-action--secondary{color:#5268c8;background:#f5f7ff;border:1px solid #e2e8fa}
+.product-details-delete{color:#b64e58}
+@media(max-width:520px){.product-row-actions{gap:4px}.button--compact{padding:0 7px}.product-delete-button{width:29px;height:29px}}
