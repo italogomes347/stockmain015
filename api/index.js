@@ -183,6 +183,7 @@ function createDemoInventory(userId, profile = null) {
     userId,
     profile,
     demoData: true,
+    initialized: true,
     products: DEMO_PRODUCTS.map((product) => ({ ...product })),
     activities: [
       { id: randomUUID(), title: 'Entrada de produtos', detail: 'Reposição de 12 unidades · Notebook Pro 15', time: new Date(now.getTime() - 20 * 60000).toLocaleString('pt-BR'), type: 'entrada', createdAt: ago(20) },
@@ -283,7 +284,7 @@ export default async function handler(req, res) {
 
     if (action === 'getInventory') {
       let data = fileId ? await readJsonFile(fileId) : null;
-      if (!data || !Array.isArray(data.products) || data.products.length === 0) {
+      if (!data || (!data.initialized && (!Array.isArray(data.products) || data.products.length === 0))) {
         const profile = data?.profile || { name: session.name, email: session.email, avatar: '' };
         data = createDemoInventory(session.sub, profile);
         fileId = await writeJsonFile(fileName, folders.usersId, data);
@@ -326,7 +327,7 @@ export default async function handler(req, res) {
           createdAt: item.createdAt && !Number.isNaN(Date.parse(item.createdAt)) ? new Date(item.createdAt).toISOString() : null
         };
       });
-      const data = { userId: session.sub, profile: currentData?.profile || null, demoData: false, products: safeProducts, activities: safeActivities, updatedAt: new Date().toISOString() };
+      const data = { userId: session.sub, profile: currentData?.profile || null, demoData: false, initialized: true, products: safeProducts, activities: safeActivities, updatedAt: new Date().toISOString() };
       await writeJsonFile(fileName, folders.usersId, data);
       return send(res, 200, { success: true, updatedAt: data.updatedAt });
     }
