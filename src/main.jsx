@@ -1,4 +1,4 @@
-import { Component, StrictMode } from 'react';
+import { Component, StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import './styles/global.css';
@@ -33,6 +33,15 @@ class AppErrorBoundary extends Component {
   }
 }
 
+function BootReady() {
+  useEffect(() => {
+    document.getElementById('stockmain-boot-fallback')?.remove();
+    document.documentElement.dataset.stockmainReady = 'true';
+  }, []);
+
+  return null;
+}
+
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {
@@ -41,8 +50,11 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <AppErrorBoundary>
-      <App />
-    </AppErrorBoundary>
+    <>
+      <BootReady />
+      <AppErrorBoundary>
+        <App />
+      </AppErrorBoundary>
+    </>
   </StrictMode>
 );
