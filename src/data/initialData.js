@@ -39,8 +39,8 @@ export const categoryData = [
 ];
 
 export const supplierData = [
-  { name: 'Distribuidora Tech (exemplo)', detail: 'Processadores, placas-mãe e memória', initials: 'DT' },
-  { name: 'Componentes PC (exemplo)', detail: 'Placas de vídeo e armazenamento', initials: 'CP' },
-  { name: 'Periféricos Brasil (exemplo)', detail: 'Teclados, mouses e headsets', initials: 'PB' },
-  { name: 'Hardware & Cia (exemplo)', detail: 'Gabinetes, fontes e refrigeração', initials: 'HC' }
+  { name: 'Distribuidora Tech', detail: 'Processadores, placas-mãe e memória', initials: 'DT' },
+  { name: 'Componentes PC', detail: 'Placas de vídeo e armazenamento', initials: 'CP' },
+  { name: 'Periféricos Brasil', detail: 'Teclados, mouses e headsets', initials: 'PB' },
+  { name: 'Hardware & Cia', detail: 'Gabinetes, fontes e refrigeração', initials: 'HC' }
 ];
