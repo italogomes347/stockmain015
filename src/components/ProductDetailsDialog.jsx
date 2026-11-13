@@ -1,7 +1,7 @@
-import { ArrowDownRight, ArrowUpRight, Package, X } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Package, Trash2, X } from 'lucide-react';
 import { formatCurrency } from '../utils/inventory.js';
 
-export default function ProductDetailsDialog({ product, activities = [], onClose, onRestock }) {
+export default function ProductDetailsDialog({ product, activities = [], onClose, onRestock, onDelete }) {
   const history = activities.filter((activity) => {
     const detail = String(activity.detail || '').toLocaleLowerCase('pt-BR');
     return detail.includes(String(product.name || '').toLocaleLowerCase('pt-BR')) || detail.includes(String(product.id || '').toLocaleLowerCase('pt-BR'));

@@ -32,6 +32,10 @@ import {
   CircleHelp,
   Command,
   Download,
+  Eye,
+  FileSpreadsheet,
+  Printer,
+  Trash2,
   LayoutDashboard,
   Menu,
   Moon,
@@ -83,7 +87,7 @@ const mobileTabs = [
   { label: 'Relatórios', icon: TrendingUp }
 ];
 
-function MobileProductCard({ product }) {
+function MobileProductCard({ product, onSelectProduct }) {
   const statusTone = product.status === 'Disponível' ? 'success' : product.status === 'Estoque baixo' ? 'warning' : 'danger';
   return (
     <article className="mobile-product-card">
@@ -99,11 +103,12 @@ function MobileProductCard({ product }) {
         <span><small>Quantidade</small><strong>{product.quantity} <small>/ mín. {product.minimum}</small></strong></span>
         <span><small>Preço unitário</small><strong>{formatCurrency(product.price)}</strong></span>
       </div>
+      <button className="mobile-product-details-button" type="button" onClick={() => onSelectProduct?.(product)}><Eye size={15} /> Ver detalhes</button>
     </article>
   );
 }
 
-function MobileWorkspace({ activePage, products, activities, filteredProducts, productsCount, movementsToday, searchTerm, setSearchTerm, selectPage, onCreateProduct, profileForm, setProfileForm, onAvatarChange, onProfileSave, profileBusy, profileMessage }) {
+function MobileWorkspace({ activePage, products, activities, filteredProducts, productsCount, movementsToday, searchTerm, setSearchTerm, selectPage, onCreateProduct, onSelectProduct, profileForm, setProfileForm, onAvatarChange, onProfileSave, profileBusy, profileMessage }) {
   let content;
 
   if (activePage === 'Visão geral') {
@@ -125,7 +130,7 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
         </section>
         <section className="mobile-section">
           <div className="mobile-section__heading"><div><h2>Precisam de atenção</h2><p>Produtos no limite ou sem estoque</p></div><button type="button" onClick={() => selectPage('Produtos')}>Ver todos <ArrowRight size={14} /></button></div>
-          <div className="mobile-card-list">{lowStock.slice(0, 3).map((product) => <MobileProductCard key={product.id} product={product} />)}</div>
+          <div className="mobile-card-list">{lowStock.slice(0, 3).map((product) => <MobileProductCard key={product.id} product={product} onSelectProduct={onSelectProduct} />)}</div>
         </section>
         <section className="mobile-section">
           <div className="mobile-section__heading"><div><h2>Atividade recente</h2><p>Últimas atualizações registradas</p></div><button type="button" onClick={() => selectPage('Movimentações')}>Histórico <ArrowRight size={14} /></button></div>
@@ -139,7 +144,7 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
         <div className="mobile-section__heading"><div><h2>Catálogo de produtos</h2><p>Gerencie os itens do seu estoque</p></div><button type="button" onClick={onCreateProduct}><Plus size={15} /> Novo</button></div>
         <div className="mobile-search"><Search size={17} /><input type="search" placeholder="Buscar por nome, código ou categoria" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></div>
         <div className="mobile-filter-summary"><span>{filteredProducts.length} de {productsCount} produtos</span><button type="button" onClick={() => setSearchTerm('')}>Limpar busca</button></div>
-        <div className="mobile-card-list">{filteredProducts.map((product) => <MobileProductCard key={product.id} product={product} />)}{filteredProducts.length === 0 && <div className="mobile-empty"><Package size={25} /><strong>Nenhum produto encontrado</strong><span>Tente outro nome ou código.</span></div>}</div>
+        <div className="mobile-card-list">{filteredProducts.map((product) => <MobileProductCard key={product.id} product={product} onSelectProduct={onSelectProduct} />)}{filteredProducts.length === 0 && <div className="mobile-empty"><Package size={25} /><strong>Nenhum produto encontrado</strong><span>Tente outro nome ou código.</span></div>}</div>
       </section>
     );
   } else if (activePage === 'Movimentações') {
@@ -170,7 +175,7 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
       <section className="mobile-section mobile-section--first">
         <div className="mobile-summary-card"><span>Resumo de desempenho</span><strong>{formatCurrency(calculateInventory(products))}</strong><small>Valor calculado do estoque</small></div>
         <div className="mobile-report-grid"><article><TrendingUp size={19} /><small>Produtos ativos</small><strong>{productsCount.toLocaleString('pt-BR')}</strong></article><article><AlertTriangle size={19} /><small>Itens em alerta</small><strong>{products.filter((product) => product.quantity <= product.minimum).length.toLocaleString('pt-BR')}</strong></article><article><ArrowDownRight size={19} /><small>Entradas hoje</small><strong>{activities.filter((activity) => activity.type === 'entrada' && activity.createdAt && new Date(activity.createdAt).toLocaleDateString('pt-BR') === new Date().toLocaleDateString('pt-BR')).length.toLocaleString('pt-BR')}</strong></article><article><ArrowUpRight size={19} /><small>Saídas hoje</small><strong>{activities.filter((activity) => activity.type === 'saida' && activity.createdAt && new Date(activity.createdAt).toLocaleDateString('pt-BR') === new Date().toLocaleDateString('pt-BR')).length.toLocaleString('pt-BR')}</strong></article></div>
-        <button className="mobile-primary-action" type="button" onClick={() => window.print()}><Download size={17} /> Exportar resumo</button>
+        <div className="mobile-report-actions"><button className="mobile-primary-action" type="button" onClick={exportReport}><FileSpreadsheet size={17} /> Baixar CSV</button><button className="mobile-primary-action mobile-primary-action--secondary" type="button" onClick={() => window.print()}><Printer size={17} /> Imprimir</button></div>
         <div className="mobile-note">Os indicadores são calculados com base nos dados salvos nesta conta.</div>
       </section>
     );
@@ -480,7 +485,51 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
     }
   };
 
-  const lowStockCount = products.filter((product) => product.quantity <= product.minimum).length;
+
+  const handleDeleteProduct = async (product) => {
+    if (!window.confirm(`Excluir definitivamente o produto "${product.name}"? Essa ação não poderá ser desfeita.`)) return;
+    const previousProducts = products;
+    const nextProducts = products.filter((item) => item.id !== product.id);
+    const nextActivities = [{
+      id: crypto.randomUUID(),
+      title: 'Produto removido',
+      detail: `${product.name} · código ${product.id}`,
+      time: new Date().toLocaleString('pt-BR'),
+      type: 'ajuste',
+      createdAt: new Date().toISOString()
+    }, ...activities].slice(0, 500);
+    setProducts(nextProducts);
+    setActivities(nextActivities);
+    setSelectedProduct(null);
+    try {
+      const saved = await saveInventory({ products: nextProducts, activities: nextActivities, expectedUpdatedAt: lastUpdatedAt });
+      setLastUpdatedAt(saved.updatedAt || '');
+      setStorageError('');
+    } catch (error) {
+      setProducts(previousProducts);
+      setStorageError(error.message || 'Não foi possível remover o produto. A alteração foi revertida.');
+    }
+  };
+
+  const exportReport = () => {
+    const rows = [
+      ['Tipo', 'Descrição', 'Quantidade', 'Data'],
+      ...activities.map((item) => [item.type, `${item.title} — ${item.detail}`, '', item.time || '']),
+      [],
+      ['Produto', 'Código', 'Categoria', 'Quantidade', 'Mínimo', 'Preço unitário', 'Valor em estoque', 'Status'],
+      ...products.map((item) => [item.name, item.id, item.category, item.quantity, item.minimum, item.price, Number(item.price || 0) * Number(item.quantity || 0), getProductStatus(item)])
+    ];
+    const csv = '\uFEFF' + rows.map((row) => row.map((cell) => '"' + String(cell ?? '').replace(/"/g, '""') + '"').join(';')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `stockmain-relatorio-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+\n  const lowStockCount = products.filter((product) => product.quantity <= product.minimum).length;
   const inventoryValue = calculateInventory(products);
   const today = new Date().toLocaleDateString('pt-BR');
   const movementsToday = activities.filter((activity) => activity.createdAt && new Date(activity.createdAt).toLocaleDateString('pt-BR') === today).length;
@@ -684,10 +733,10 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
                 <div className="panel__header"><div><h2>Todos os produtos</h2><p>{filteredProducts.length} produto(s) encontrado(s)</p></div></div>
                 <div className="table-wrap">
                   <table className="products-table">
-                    <thead><tr><th>CÓDIGO</th><th>PRODUTO</th><th>CATEGORIA</th><th>QUANTIDADE</th><th>PREÇO</th><th>STATUS</th></tr></thead>
+                    <thead><tr><th>CÓDIGO</th><th>PRODUTO</th><th>CATEGORIA</th><th>QUANTIDADE</th><th>PREÇO</th><th>STATUS</th><th>AÇÕES</th></tr></thead>
                     <tbody>
-                      {filteredProducts.map((product) => <tr key={product.id} className="product-row-clickable" onClick={() => setSelectedProduct(product)} tabIndex={0} role="button" aria-label={"Ver detalhes de " + product.name}><td>{product.id}</td><td><strong>{product.name}</strong></td><td>{product.category}</td><td>{product.quantity} / mín. {product.minimum}</td><td>{formatCurrency(product.price)}</td><td><span className={`status-pill status-pill--${product.status === 'Disponível' ? 'success' : product.status === 'Estoque baixo' ? 'warning' : 'danger'}`}><span />{product.status}</span></td></tr>)}
-                      {!filteredProducts.length && <tr><td className="empty-state" colSpan="6">Nenhum produto encontrado. Cadastre seu primeiro produto.</td></tr>}
+                      {filteredProducts.map((product) => <tr key={product.id}><td>{product.id}</td><td><strong>{product.name}</strong></td><td>{product.category}</td><td>{product.quantity} / mín. {product.minimum}</td><td>{formatCurrency(product.price)}</td><td><span className={`status-pill status-pill--${product.status === 'Disponível' ? 'success' : product.status === 'Estoque baixo' ? 'warning' : 'danger'}`}><span />{product.status}</span></td><td><div className="product-row-actions"><button className="button button--secondary button--compact" type="button" onClick={() => setSelectedProduct(product)}><Eye size={14} /> Ver detalhes</button><button className="icon-button product-delete-button" type="button" title={`Excluir ${product.name}`} aria-label={`Excluir ${product.name}`} onClick={() => handleDeleteProduct(product)}><Trash2 size={16} /></button></div></td></tr>)}
+                      {!filteredProducts.length && <tr><td className="empty-state" colSpan="7">Nenhum produto encontrado. Cadastre seu primeiro produto.</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -734,11 +783,11 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
                   </tbody></table></div>
                 </article>
                 <article className="panel">
-                  <div className="panel__header"><div><h2>Resumo de movimentações</h2><p>Registros armazenados nesta conta.</p></div></div>
+                  <div className="report-movement-heading"><div><span className="report-section-kicker">HISTÓRICO DA CONTA</span><h2>Resumo de movimentações</h2><p>Veja como o estoque foi movimentado no período registrado.</p></div><span className="report-total-badge">{activities.length} registros</span></div>
                   <div className="report-movement-summary">
-                    <div><span className="activity-item__icon activity-item__icon--entrada"><ArrowDownRight size={17} /></span><span><small>Entradas</small><strong>{activities.filter((item) => item.type === 'entrada').length}</strong></span></div>
-                    <div><span className="activity-item__icon activity-item__icon--saida"><ArrowUpRight size={17} /></span><span><small>Saídas</small><strong>{activities.filter((item) => item.type === 'saida').length}</strong></span></div>
-                    <div><span className="activity-item__icon"><Activity size={17} /></span><span><small>Ajustes e cadastros</small><strong>{activities.filter((item) => item.type === 'ajuste').length}</strong></span></div>
+                    <div className="report-movement-card report-movement-card--entry"><span className="report-movement-card__icon"><ArrowDownRight size={19} /></span><span className="report-movement-card__copy"><small>Entradas</small><strong>{activities.filter((item) => item.type === 'entrada').length}</strong><em>Reposições recebidas</em></span></div>
+                    <div className="report-movement-card report-movement-card--exit"><span className="report-movement-card__icon"><ArrowUpRight size={19} /></span><span className="report-movement-card__copy"><small>Saídas</small><strong>{activities.filter((item) => item.type === 'saida').length}</strong><em>Itens retirados</em></span></div>
+                    <div className="report-movement-card report-movement-card--adjust"><span className="report-movement-card__icon"><Activity size={19} /></span><span className="report-movement-card__copy"><small>Ajustes e cadastros</small><strong>{activities.filter((item) => item.type === 'ajuste').length}</strong><em>Outras atualizações</em></span></div>
                   </div>
                 </article>
               </section>
@@ -762,7 +811,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
           )}
         </div>
         </div>
-        <MobileWorkspace activePage={activePage} products={products} activities={activities} filteredProducts={filteredProducts} productsCount={products.length} movementsToday={movementsToday} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} profileForm={profileForm} setProfileForm={setProfileForm} onAvatarChange={handleAvatarChange} onProfileSave={handleProfileSave} profileBusy={profileBusy} profileMessage={profileMessage} />
+        <MobileWorkspace activePage={activePage} products={products} activities={activities} filteredProducts={filteredProducts} productsCount={products.length} movementsToday={movementsToday} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} onSelectProduct={setSelectedProduct} profileForm={profileForm} setProfileForm={setProfileForm} onAvatarChange={handleAvatarChange} onProfileSave={handleProfileSave} profileBusy={profileBusy} profileMessage={profileMessage} />
         <nav className="mobile-bottom-nav" aria-label="Navegação mobile">
           {mobileTabs.map(({ label, icon: Icon }) => (
             <button className={`mobile-bottom-nav__item ${activePage === label ? 'mobile-bottom-nav__item--active' : ''}`} key={label} type="button" onClick={() => selectPage(label)} aria-current={activePage === label ? 'page' : undefined}>
@@ -773,7 +822,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
             <Menu size={20} strokeWidth={1.9} /><span>Mais</span>
           </button>
         </nav>
-        {selectedProduct && <ProductDetailsDialog product={selectedProduct} activities={activities} onClose={() => setSelectedProduct(null)} onRestock={() => { setSelectedProduct(null); setIsMovementDialogOpen(true); }} />}
+        {selectedProduct && <ProductDetailsDialog product={selectedProduct} activities={activities} onClose={() => setSelectedProduct(null)} onRestock={() => { setSelectedProduct(null); setIsMovementDialogOpen(true); }} onDelete={() => handleDeleteProduct(selectedProduct)} />}
         {isMovementDialogOpen && <MovementDialog products={products} onClose={() => setIsMovementDialogOpen(false)} onSave={handleStockMovement} />}
         {isProductDialogOpen && (
           <ProductDialog
