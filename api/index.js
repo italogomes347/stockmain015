@@ -291,7 +291,7 @@ export default async function handler(req, res) {
       const password = String(body.password || '');
       const role = body.role === 'supplier' ? 'supplier' : 'user';
       if (name.length < 2 || name.length > 80) return send(res, 400, { error: 'Informe um nome entre 2 e 80 caracteres.' });
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email) || email.length > 254) return send(res, 400, { error: 'Informe um e-mail válido.' });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) return send(res, 400, { error: 'Informe um e-mail válido.' });
       if (password.length < 10 || password.length > 128) return send(res, 400, { error: 'A senha deve ter entre 10 e 128 caracteres.' });
       if (account.users.some((item) => item.email === email)) return send(res, 409, { error: 'Já existe uma conta com este e-mail.' });
       const passwordData = await hashPassword(password);
@@ -310,7 +310,7 @@ export default async function handler(req, res) {
       const email = String(body.email || '').trim().toLowerCase();
       const role = body.role === 'supplier' ? 'supplier' : 'user';
       if (name.length < 2 || name.length > 80) return send(res, 400, { error: 'Informe um nome entre 2 e 80 caracteres.' });
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email) || email.length > 254) return send(res, 400, { error: 'Informe um e-mail válido.' });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) return send(res, 400, { error: 'Informe um e-mail válido.' });
       if (email === ADMIN_EMAIL || account.users.some((item) => item.id !== target.id && item.email === email)) return send(res, 409, { error: 'Este e-mail já está em uso ou reservado.' });
       target.name = name; target.email = email; target.role = role;
       await writeJsonFile('usuarios.json', account.loginsId, account.users);
