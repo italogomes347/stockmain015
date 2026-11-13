@@ -195,9 +195,10 @@ function InventoryApp({ user, onLogout }) {
     getInventory()
       .then(async (data) => {
         if (!active) return;
-        if (Array.isArray(data?.products)) {
+        if (Array.isArray(data?.products) && data.products.length > 0) {
           setProducts(data.products);
         } else {
+          setProducts(initialProducts);
           await saveInventory({ products: initialProducts, activities: initialActivities });
         }
       })
@@ -325,7 +326,7 @@ function InventoryApp({ user, onLogout }) {
           </div>
           <div className="user-profile">
             <span className="user-profile__avatar">IG</span>
-            <span className="user-profile__copy"><strong>Administrador</strong><small>Gestor do sistema</small></span>
+            <span className="user-profile__copy"><strong>{user?.name || user?.email || "Usuário"}</strong><small>Conta StockMain</small></span>
             <button className="icon-button" type="button" aria-label="Sair da conta" onClick={onLogout}><ChevronDown size={16} /></button>
           </div>
         </div>
@@ -534,7 +535,7 @@ function App() {
             {authMode === 'register' && <label>Nome completo<input name="name" value={authForm.name} onChange={updateAuthField} autoComplete="name" maxLength="80" required /></label>}
             <label>E-mail<input name="email" type="email" value={authForm.email} onChange={updateAuthField} autoComplete="email" maxLength="254" required /></label>
             <label>Senha<input name="password" type="password" value={authForm.password} onChange={updateAuthField} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} minLength="10" maxLength="128" required /></label>
-            {authMode === 'register' && <small className="auth-hint">Use pelo menos 10 caracteres, incluindo letras e números.</small>}
+            {authMode === 'register' && <small className="auth-hint">Sua senha deve ter entre 10 e 128 caracteres.</small>}
             {authError && <p className="auth-error" role="alert">{authError}</p>}
             <button className="button button--primary auth-submit" type="submit" disabled={authLoading}>{authLoading ? 'Aguarde...' : authMode === 'login' ? 'Entrar' : 'Criar conta'}</button>
           </form>
