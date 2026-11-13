@@ -13,8 +13,9 @@ async function parseResponse(response) {
 async function request(action, payload = {}) {
   const response = await fetch('/api', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
     body: JSON.stringify({ action, ...payload })
   });
   const data = await parseResponse(response);
