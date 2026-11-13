@@ -86,7 +86,8 @@ const mobileTabs = [
   { label: 'Visão geral', icon: Home },
   { label: 'Produtos', icon: Package },
   { label: 'Movimentações', icon: Activity },
-  { label: 'Relatórios', icon: TrendingUp }
+  { label: 'Relatórios', icon: TrendingUp },
+  { label: 'Fornecedores', icon: Users }
 ];
 
 function MobileProductCard({ product, onSelectProduct }) {
