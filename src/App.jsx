@@ -321,7 +321,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
       } catch {
         // A próxima rodada de sincronização tentará novamente sem interromper o uso.
       }
-    }, 5000);
+    }, 1500);
     return () => window.clearInterval(intervalId);
   }, [lastUpdatedAt]);
 
