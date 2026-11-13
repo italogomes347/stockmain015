@@ -60,10 +60,20 @@ async function findJsonFile(name, parentId) {
 }
 
 async function readJsonFile(fileId) {
-  const response = await getDrive().files.get({ fileId, alt: 'media', supportsAllDrives: true });
-  const chunks = [];
-  for await (const chunk of response.data) chunks.push(Buffer.from(chunk));
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  const response = await getDrive().files.get(
+    { fileId, alt: 'media', supportsAllDrives: true },
+    { responseType: 'stream' }
+  );
+  const payload = response.data;
+  if (payload && typeof payload[Symbol.asyncIterator] === 'function') {
+    const chunks = [];
+    for await (const chunk of payload) chunks.push(Buffer.from(chunk));
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  }
+  if (Buffer.isBuffer(payload)) return JSON.parse(payload.toString('utf8'));
+  if (typeof payload === 'string') return JSON.parse(payload);
+  if (payload && typeof payload === 'object') return payload;
+  throw new Error('O Google Drive retornou um arquivo JSON em formato inválido.');
 }
 
 async function writeJsonFile(name, parentId, value) {
@@ -157,6 +167,32 @@ function publicUser(user) {
   return { id: user.id, name: user.name, email: user.email };
 }
 
+const DEMO_PRODUCTS = [
+  { id: 'PRD-001', name: 'Notebook Pro 15', sku: 'NTB-015', category: 'Informática', quantity: 24, minimum: 10, price: 4299.90, status: 'Disponível' },
+  { id: 'PRD-002', name: 'Mouse sem fio', sku: 'MOU-002', category: 'Acessórios', quantity: 8, minimum: 12, price: 89.90, status: 'Estoque baixo' },
+  { id: 'PRD-003', name: 'Teclado mecânico', sku: 'TEC-003', category: 'Acessórios', quantity: 36, minimum: 10, price: 249.90, status: 'Disponível' },
+  { id: 'PRD-004', name: 'Monitor 27 polegadas', sku: 'MON-027', category: 'Informática', quantity: 5, minimum: 8, price: 1199.90, status: 'Estoque baixo' },
+  { id: 'PRD-005', name: 'Headset profissional', sku: 'HDS-005', category: 'Áudio', quantity: 0, minimum: 6, price: 319.90, status: 'Sem estoque' },
+  { id: 'PRD-006', name: 'Webcam Full HD', sku: 'WEB-1080', category: 'Periféricos', quantity: 14, minimum: 5, price: 189.90, status: 'Disponível' }
+];
+
+function createDemoInventory(userId, profile = null) {
+  const now = new Date();
+  const ago = (minutes) => new Date(now.getTime() - minutes * 60000).toISOString();
+  return {
+    userId,
+    profile,
+    demoData: true,
+    products: DEMO_PRODUCTS.map((product) => ({ ...product })),
+    activities: [
+      { id: randomUUID(), title: 'Entrada de produtos', detail: 'Reposição de 12 unidades · Notebook Pro 15', time: new Date(now.getTime() - 20 * 60000).toLocaleString('pt-BR'), type: 'entrada', createdAt: ago(20) },
+      { id: randomUUID(), title: 'Saída de produtos', detail: 'Saída de 4 unidades · Teclado mecânico', time: new Date(now.getTime() - 55 * 60000).toLocaleString('pt-BR'), type: 'saida', createdAt: ago(55) },
+      { id: randomUUID(), title: 'Estoque ajustado', detail: 'Contagem atualizada · Mouse sem fio', time: new Date(now.getTime() - 180 * 60000).toLocaleString('pt-BR'), type: 'ajuste', createdAt: ago(180) }
+    ],
+    updatedAt: now.toISOString()
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Método não permitido.' });
   const origin = req.headers.origin;
@@ -204,7 +240,7 @@ export default async function handler(req, res) {
         stage = 'drive:write-user-index';
         await writeJsonFile('usuarios.json', account.loginsId, account.users);
         stage = 'drive:write-user-file';
-        await writeJsonFile(`${user.id}.json`, account.usersId, { userId: user.id, products: [], activities: [], updatedAt: new Date().toISOString() });
+        await writeJsonFile(`${user.id}.json`, account.usersId, createDemoInventory(user.id, { name: user.name, email: user.email, avatar: '' }));
       } else if (!user || !(await verifyPassword(password, user.passwordSalt, user.passwordHash))) {
         return send(res, 401, { error: 'E-mail ou senha incorretos.' });
       }
@@ -215,14 +251,52 @@ export default async function handler(req, res) {
     if (!session) return send(res, 401, { error: 'Faça login para continuar.' });
     const folders = await ensureFolders();
     const fileName = `${session.sub}.json`;
-    const fileId = await findJsonFile(fileName, folders.usersId);
+    let fileId = await findJsonFile(fileName, folders.usersId);
+
+    if (action === 'getProfile') {
+      const account = await getUserFiles();
+      const accountUser = account.users.find((item) => item.id === session.sub);
+      const inventory = fileId ? await readJsonFile(fileId) : null;
+      const profile = inventory?.profile || { name: accountUser?.name || session.name, email: session.email, avatar: '' };
+      return send(res, 200, { profile });
+    }
+
+    if (action === 'updateProfile') {
+      const name = String(body.name || '').trim();
+      const avatar = String(body.avatar || '');
+      if (name.length < 2 || name.length > 80) return send(res, 400, { error: 'O nome deve ter entre 2 e 80 caracteres.' });
+      if (avatar && (!/^data:image\\/(png|jpeg|webp|gif);base64,/.test(avatar) || avatar.length > 1400000)) {
+        return send(res, 400, { error: 'A foto deve ser PNG, JPG, WEBP ou GIF e ter no máximo 1 MB.' });
+      }
+      const account = await getUserFiles();
+      const accountUser = account.users.find((item) => item.id === session.sub);
+      if (!accountUser) return send(res, 404, { error: 'Conta não encontrada.' });
+      accountUser.name = name;
+      await writeJsonFile('usuarios.json', account.loginsId, account.users);
+      const inventory = fileId ? await readJsonFile(fileId) : createDemoInventory(session.sub);
+      inventory.profile = { name, email: accountUser.email, avatar };
+      inventory.updatedAt = new Date().toISOString();
+      await writeJsonFile(fileName, folders.usersId, inventory);
+      setCookie(res, signSession(accountUser));
+      return send(res, 200, { success: true, profile: inventory.profile, updatedAt: inventory.updatedAt });
+    }
 
     if (action === 'getInventory') {
-      const data = fileId ? await readJsonFile(fileId) : { products: [], activities: [] };
+      let data = fileId ? await readJsonFile(fileId) : null;
+      if (!data || !Array.isArray(data.products) || data.products.length === 0) {
+        const profile = data?.profile || { name: session.name, email: session.email, avatar: '' };
+        data = createDemoInventory(session.sub, profile);
+        fileId = await writeJsonFile(fileName, folders.usersId, data);
+      }
       return send(res, 200, data);
     }
 
     if (action === 'saveInventory') {
+      const currentData = fileId ? await readJsonFile(fileId) : null;
+      const expectedUpdatedAt = String(body.expectedUpdatedAt || '');
+      if (expectedUpdatedAt && currentData?.updatedAt && expectedUpdatedAt !== currentData.updatedAt) {
+        return send(res, 409, { error: 'Os dados foram atualizados em outro acesso. Sincronize e tente novamente.', conflict: true, updatedAt: currentData.updatedAt });
+      }
       const products = Array.isArray(body.products) ? body.products : [];
       const activities = Array.isArray(body.activities) ? body.activities : [];
       if (products.length > 5000 || activities.length > 10000) return send(res, 413, { error: 'Limite de registros excedido.' });
@@ -252,7 +326,7 @@ export default async function handler(req, res) {
           createdAt: item.createdAt && !Number.isNaN(Date.parse(item.createdAt)) ? new Date(item.createdAt).toISOString() : null
         };
       });
-      const data = { userId: session.sub, products: safeProducts, activities: safeActivities, updatedAt: new Date().toISOString() };
+      const data = { userId: session.sub, profile: currentData?.profile || null, demoData: false, products: safeProducts, activities: safeActivities, updatedAt: new Date().toISOString() };
       await writeJsonFile(fileName, folders.usersId, data);
       return send(res, 200, { success: true, updatedAt: data.updatedAt });
     }
