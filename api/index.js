@@ -12,12 +12,14 @@ let driveClient;
 
 function getDrive() {
   if (driveClient) return driveClient;
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!email || !privateKey || !ROOT_ID || !process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
-    throw new Error('Configuração do servidor incompleta. Verifique as variáveis de ambiente do Google Drive e da sessão.');
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+  if (!clientId || !clientSecret || !refreshToken || !ROOT_ID || !process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+    throw new Error('Configuração do servidor incompleta. Configure OAuth 2.0 do Google Drive e a sessão.');
   }
-  const auth = new google.auth.JWT({ email, key: privateKey, scopes: ['https://www.googleapis.com/auth/drive'] });
+  const auth = new google.auth.OAuth2(clientId, clientSecret);
+  auth.setCredentials({ refresh_token: refreshToken });
   driveClient = google.drive({ version: 'v3', auth });
   return driveClient;
 }
