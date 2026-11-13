@@ -439,7 +439,7 @@ function InventoryApp({ user, onLogout }) {
                     <div className="activity-item__content"><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div>
                     {index < activities.length - 1 && <span className="activity-item__line" />}
                   </div>
-                ))}
+                )) : <p className="empty-state">Nenhuma atividade registrada ainda.</p>}
               </div>
               <button className="activity-link" type="button" onClick={() => selectPage('Movimentações')}>Ver movimentações <ArrowRight size={15} /></button>
             </article>
