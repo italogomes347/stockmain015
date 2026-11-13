@@ -112,6 +112,7 @@ function signSession(user) {
     email: user.email,
     name: user.name,
     role: user.email === ADMIN_EMAIL ? 'admin' : (user.role || 'user'),
+    sv: Number(user.sessionVersion || 0),
     exp: Math.floor(Date.now() / 1000) + SESSION_DURATION
   })).toString('base64url');
   const signature = createHmac('sha256', process.env.SESSION_SECRET).update(payload).digest('base64url');
@@ -264,7 +265,7 @@ export default async function handler(req, res) {
     if (!session) return send(res, 401, { error: 'Faça login para continuar.' });
     const account = await getUserFiles();
     const currentUser = account.users.find((item) => item.id === session.sub);
-    if (!currentUser || currentUser.active === false) { setCookie(res, '', 0); return send(res, 401, { error: 'Esta conta não está mais ativa. Entre novamente.' }); }
+    if (!currentUser || currentUser.active === false || Number(session.sv || 0) !== Number(currentUser.sessionVersion || 0)) { setCookie(res, '', 0); return send(res, 401, { error: 'Esta sessão não está mais ativa. Entre novamente.' }); }
     const currentRole = currentUser.email === ADMIN_EMAIL ? 'admin' : (currentUser.role || 'user');
     if (currentUser.role !== currentRole) { currentUser.role = currentRole; await writeJsonFile('usuarios.json', account.loginsId, account.users); }
     const isAdmin = currentRole === 'admin';
@@ -331,7 +332,7 @@ export default async function handler(req, res) {
       if (!target || target.email === ADMIN_EMAIL) return send(res, 404, { error: 'Conta não encontrada ou protegida.' });
       if (password.length < 10 || password.length > 128) return send(res, 400, { error: 'A nova senha deve ter entre 10 e 128 caracteres.' });
       const passwordData = await hashPassword(password);
-      target.passwordSalt = passwordData.salt; target.passwordHash = passwordData.hash;
+      target.passwordSalt = passwordData.salt; target.passwordHash = passwordData.hash; target.sessionVersion = Number(target.sessionVersion || 0) + 1;
       await writeJsonFile('usuarios.json', account.loginsId, account.users);
       return send(res, 200, { success: true });
     }
