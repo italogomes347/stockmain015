@@ -5,8 +5,14 @@ async function request(action, payload = {}) {
     credentials: 'same-origin',
     body: JSON.stringify({ action, ...payload })
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Falha na comunicação com o StockMain.');
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.error || 'Falha na comunicação com o StockMain.');
+    error.status = response.status;
+    error.conflict = Boolean(data.conflict);
+    error.updatedAt = data.updatedAt || null;
+    throw error;
+  }
   return data;
 }
 
@@ -16,4 +22,12 @@ export function getInventory() {
 
 export function saveInventory(inventory) {
   return request('saveInventory', inventory);
+}
+
+export function getProfile() {
+  return request('getProfile');
+}
+
+export function updateProfile(profile) {
+  return request('updateProfile', profile);
 }
