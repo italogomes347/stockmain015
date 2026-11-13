@@ -10,6 +10,7 @@ async function parseApiResponse(response) {
 
 import { useEffect, useMemo, useState } from 'react';
 import ProductDialog from './components/ProductDialog.jsx';
+import ProductDetailsDialog from './components/ProductDetailsDialog.jsx';
 import { getInventory, saveInventory, getProfile, updateProfile } from './services/api.js';
 import { categoryData, supplierData } from './data/initialData.js';
 import { calculateInventory, createProductId, formatCurrency, getProductStatus } from './utils/inventory.js';
@@ -33,6 +34,8 @@ import {
   Download,
   LayoutDashboard,
   Menu,
+  Moon,
+  Sun,
   Package,
   Plus,
   Search,
@@ -272,11 +275,18 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem('stockmain-theme') === 'dark' ? 'dark' : 'light'; } catch { return 'light'; } });
   const [storageError, setStorageError] = useState('');
   const [lastUpdatedAt, setLastUpdatedAt] = useState('');
   const [profileForm, setProfileForm] = useState({ name: user?.name || '', avatar: '' });
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
+
+  useEffect(() => {
+    try { localStorage.setItem('stockmain-theme', theme); } catch { /* Preferência indisponível neste navegador. */ }
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   useEffect(() => {
     let active = true;
@@ -472,7 +482,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
   const movementsToday = activities.filter((activity) => activity.createdAt && new Date(activity.createdAt).toLocaleDateString('pt-BR') === today).length;
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-theme={theme}>
       {mobileMenuOpen && (
         <button
           className="sidebar-backdrop"
@@ -563,6 +573,9 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
               />
               <kbd>⌘ K</kbd>
             </label>
+            <button className="icon-button theme-toggle" type="button" aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"} title={theme === "dark" ? "Tema claro" : "Tema escuro"} onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}>
+              {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+            </button>
             <div className="notification-wrap">
               <button className="icon-button notification-button" type="button" aria-label="Notificações" onClick={() => setShowNotifications((current) => !current)}>
                 <Bell size={19} />
@@ -668,7 +681,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
                   <table className="products-table">
                     <thead><tr><th>CÓDIGO</th><th>PRODUTO</th><th>CATEGORIA</th><th>QUANTIDADE</th><th>PREÇO</th><th>STATUS</th></tr></thead>
                     <tbody>
-                      {filteredProducts.map((product) => <tr key={product.id}><td>{product.id}</td><td><strong>{product.name}</strong></td><td>{product.category}</td><td>{product.quantity} / mín. {product.minimum}</td><td>{formatCurrency(product.price)}</td><td><span className={`status-pill status-pill--${product.status === 'Disponível' ? 'success' : product.status === 'Estoque baixo' ? 'warning' : 'danger'}`}><span />{product.status}</span></td></tr>)}
+                      {filteredProducts.map((product) => <tr key={product.id} className="product-row-clickable" onClick={() => setSelectedProduct(product)} tabIndex={0} role="button" aria-label={"Ver detalhes de " + product.name}><td>{product.id}</td><td><strong>{product.name}</strong></td><td>{product.category}</td><td>{product.quantity} / mín. {product.minimum}</td><td>{formatCurrency(product.price)}</td><td><span className={`status-pill status-pill--${product.status === 'Disponível' ? 'success' : product.status === 'Estoque baixo' ? 'warning' : 'danger'}`}><span />{product.status}</span></td></tr>)}
                       {!filteredProducts.length && <tr><td className="empty-state" colSpan="6">Nenhum produto encontrado. Cadastre seu primeiro produto.</td></tr>}
                     </tbody>
                   </table>
@@ -755,6 +768,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
             <Menu size={20} strokeWidth={1.9} /><span>Mais</span>
           </button>
         </nav>
+        {selectedProduct && <ProductDetailsDialog product={selectedProduct} activities={activities} onClose={() => setSelectedProduct(null)} onRestock={() => { setSelectedProduct(null); setIsMovementDialogOpen(true); }} />}
         {isMovementDialogOpen && <MovementDialog products={products} onClose={() => setIsMovementDialogOpen(false)} onSave={handleStockMovement} />}
         {isProductDialogOpen && (
           <ProductDialog
