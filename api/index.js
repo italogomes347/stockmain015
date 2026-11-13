@@ -246,6 +246,7 @@ export default async function handler(req, res) {
       const account = await getUserFiles();
       let user = account.users.find((item) => item.email === email);
       if (action === 'register') {
+        if (email === ADMIN_EMAIL) return send(res, 403, { error: 'Este e-mail é reservado para a conta administradora.' });
         if (user) return send(res, 409, { error: 'Já existe uma conta com este e-mail.' });
         if (name.length < 2 || name.length > 80) return send(res, 400, { error: 'Informe seu nome completo.' });
         const passwordData = await hashPassword(password);
@@ -294,7 +295,7 @@ export default async function handler(req, res) {
       if (name.length < 2 || name.length > 80) return send(res, 400, { error: 'Informe um nome entre 2 e 80 caracteres.' });
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) return send(res, 400, { error: 'Informe um e-mail válido.' });
       if (password.length < 10 || password.length > 128) return send(res, 400, { error: 'A senha deve ter entre 10 e 128 caracteres.' });
-      if (account.users.some((item) => item.email === email)) return send(res, 409, { error: 'Já existe uma conta com este e-mail.' });
+      if (email === ADMIN_EMAIL || account.users.some((item) => item.email === email)) return send(res, 409, { error: 'Este e-mail já está em uso ou reservado.' });
       const passwordData = await hashPassword(password);
       const createdUser = { id: randomUUID(), name, email, role, active: true, passwordSalt: passwordData.salt, passwordHash: passwordData.hash, createdAt: new Date().toISOString() };
       account.users.push(createdUser);
