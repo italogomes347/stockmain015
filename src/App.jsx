@@ -158,7 +158,7 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
   } else if (activePage === 'Fornecedores') {
     content = (
       <section className="mobile-section mobile-section--first">
-        <div className="mobile-section__heading"><div><h2>Fornecedores</h2><p>Parceiros cadastrados no exemplo</p></div></div>
+        <div className="mobile-section__heading"><div><h2>Fornecedores</h2><p>Empresas responsáveis pelo fornecimento dos itens</p></div></div>
         <div className="mobile-card-list">{supplierData.map((supplier) => <article className="mobile-info-card" key={supplier.name}><span className="mobile-supplier-avatar">{supplier.initials}</span><div><strong>{supplier.name}</strong><small>{supplier.detail}</small></div><Truck size={17} /></article>)}</div>
       </section>
     );
@@ -185,7 +185,7 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
           {profileMessage && <p className="mobile-note" role="status">{profileMessage}</p>}
         </form>
         <div className="mobile-settings-list"><div><span><Settings size={18} /></span><div><strong>Preferências do sistema</strong><small>Personalização e experiência</small></div><ChevronDown size={17} /></div><div><span><Bell size={18} /></span><div><strong>Notificações</strong><small>Alertas de estoque e atividades</small></div><ChevronDown size={17} /></div><div><span><CircleHelp size={18} /></span><div><strong>Ajuda e suporte</strong><small>Orientações sobre o StockMain</small></div><ChevronDown size={17} /></div></div>
-        <div className="mobile-note">As opções desta tela são demonstrativas e serão conectadas às configurações do sistema nas próximas etapas.</div>
+        <div className="mobile-note">Gerencie as informações do seu perfil e as preferências da sua conta.</div>
       </section>
     );
   } else {
@@ -274,7 +274,6 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [storageError, setStorageError] = useState('');
   const [lastUpdatedAt, setLastUpdatedAt] = useState('');
-  const [demoData, setDemoData] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: user?.name || '', avatar: '' });
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
@@ -287,7 +286,6 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
         setProducts(Array.isArray(data?.products) ? data.products : []);
         setActivities(Array.isArray(data?.activities) ? data.activities : []);
         setLastUpdatedAt(data?.updatedAt || '');
-        setDemoData(Boolean(data?.demoData));
         const profile = profileData?.profile || {};
         setProfileForm({ name: profile.name || user?.name || '', avatar: profile.avatar || '' });
       })
@@ -307,7 +305,6 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
           setProducts(Array.isArray(remote.products) ? remote.products : []);
           setActivities(Array.isArray(remote.activities) ? remote.activities : []);
           setLastUpdatedAt(remote.updatedAt);
-          setDemoData(Boolean(remote.demoData));
         }
       } catch {
         // A próxima rodada de sincronização tentará novamente sem interromper o uso.
@@ -406,7 +403,6 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
     try {
       const saved = await saveInventory({ products: nextProducts, activities: nextActivities, expectedUpdatedAt: lastUpdatedAt });
       setLastUpdatedAt(saved.updatedAt || '');
-      setDemoData(false);
       setStorageError('');
     } catch (error) {
       if (error.conflict) {
@@ -586,7 +582,6 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
         </header>
 
         {storageError && <div className="storage-error" role="alert">{storageError}</div>}
-        {demoData && <div className="demo-data-notice" role="status">Dados demonstrativos carregados para você explorar o StockMain. Edite ou exclua os exemplos e cadastre seu estoque real.</div>}
         <div className="desktop-dashboard">
         <div className="page-content">
           {activePage === 'Visão geral' && <>
