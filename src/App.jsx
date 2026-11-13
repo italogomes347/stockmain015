@@ -489,6 +489,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
   const handleDeleteProduct = async (product) => {
     if (!window.confirm(`Excluir definitivamente o produto "${product.name}"? Essa ação não poderá ser desfeita.`)) return;
     const previousProducts = products;
+    const previousActivities = activities;
     const nextProducts = products.filter((item) => item.id !== product.id);
     const nextActivities = [{
       id: crypto.randomUUID(),
@@ -507,6 +508,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
       setStorageError('');
     } catch (error) {
       setProducts(previousProducts);
+      setActivities(previousActivities);
       setStorageError(error.message || 'Não foi possível remover o produto. A alteração foi revertida.');
     }
   };
