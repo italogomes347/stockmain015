@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import ProductDialog from './components/ProductDialog.jsx';
-import { getInventory, saveInventory } from './services/api.js';
+import { getInventory, saveInventory, getProfile, updateProfile } from './services/api.js';
 import { categoryData, supplierData } from './data/initialData.js';
 import { calculateInventory, createProductId, formatCurrency, getProductStatus } from './utils/inventory.js';
 import {
@@ -90,7 +90,7 @@ function MobileProductCard({ product }) {
   );
 }
 
-function MobileWorkspace({ activePage, products, activities, filteredProducts, productsCount, movementsToday, searchTerm, setSearchTerm, selectPage, onCreateProduct }) {
+function MobileWorkspace({ activePage, products, activities, filteredProducts, productsCount, movementsToday, searchTerm, setSearchTerm, selectPage, onCreateProduct, profileForm, setProfileForm, onAvatarChange, onProfileSave, profileBusy, profileMessage }) {
   let content;
 
   if (activePage === 'Visão geral') {
@@ -164,7 +164,16 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
   } else if (activePage === 'Configurações') {
     content = (
       <section className="mobile-section mobile-section--first">
-        <article className="mobile-profile-card"><span className="mobile-profile-avatar">IG</span><div><strong>Administrador</strong><small>Gestor do sistema</small></div></article>
+        <article className="mobile-profile-card">
+          <span className="mobile-profile-avatar">{profileForm.avatar ? <img src={profileForm.avatar} alt="Foto do perfil" /> : (profileForm.name || 'U').slice(0, 2).toUpperCase()}</span>
+          <div><strong>{profileForm.name || 'Seu perfil'}</strong><small>Conta StockMain</small></div>
+        </article>
+        <form className="mobile-profile-form" onSubmit={onProfileSave}>
+          <label>Nome do perfil<input value={profileForm.name} onChange={(event) => setProfileForm((current) => ({ ...current, name: event.target.value }))} minLength="2" maxLength="80" required /></label>
+          <label>Foto do perfil<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={onAvatarChange} /></label>
+          <button className="mobile-primary-action" type="submit" disabled={profileBusy}>{profileBusy ? 'Salvando...' : 'Salvar perfil'}</button>
+          {profileMessage && <p className="mobile-note" role="status">{profileMessage}</p>}
+        </form>
         <div className="mobile-settings-list"><div><span><Settings size={18} /></span><div><strong>Preferências do sistema</strong><small>Personalização e experiência</small></div><ChevronDown size={17} /></div><div><span><Bell size={18} /></span><div><strong>Notificações</strong><small>Alertas de estoque e atividades</small></div><ChevronDown size={17} /></div><div><span><CircleHelp size={18} /></span><div><strong>Ajuda e suporte</strong><small>Orientações sobre o StockMain</small></div><ChevronDown size={17} /></div></div>
         <div className="mobile-note">As opções desta tela são demonstrativas e serão conectadas às configurações do sistema nas próximas etapas.</div>
       </section>
@@ -245,7 +254,7 @@ function MovementDialog({ products, onClose, onSave }) {
   );
 }
 
-function InventoryApp({ user, onLogout }) {
+function InventoryApp({ user, onLogout, onProfileUpdate }) {
   const [activePage, setActivePage] = useState('Visão geral');
   const [products, setProducts] = useState([]);  const [activities, setActivities] = useState([]);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
@@ -254,14 +263,23 @@ function InventoryApp({ user, onLogout }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [storageError, setStorageError] = useState('');
+  const [lastUpdatedAt, setLastUpdatedAt] = useState('');
+  const [demoData, setDemoData] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: user?.name || '', avatar: '' });
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
 
   useEffect(() => {
     let active = true;
-    getInventory()
-      .then(async (data) => {
+    Promise.all([getInventory(), getProfile()])
+      .then(([data, profileData]) => {
         if (!active) return;
         setProducts(Array.isArray(data?.products) ? data.products : []);
         setActivities(Array.isArray(data?.activities) ? data.activities : []);
+        setLastUpdatedAt(data?.updatedAt || '');
+        setDemoData(Boolean(data?.demoData));
+        const profile = profileData?.profile || {};
+        setProfileForm({ name: profile.name || user?.name || '', avatar: profile.avatar || '' });
       })
       .catch(() => {
         if (active) setStorageError('Não foi possível sincronizar os dados com o Google Drive.');
@@ -269,7 +287,62 @@ function InventoryApp({ user, onLogout }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [user?.name]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(async () => {
+      try {
+        const remote = await getInventory();
+        if (remote?.updatedAt && remote.updatedAt !== lastUpdatedAt) {
+          setProducts(Array.isArray(remote.products) ? remote.products : []);
+          setActivities(Array.isArray(remote.activities) ? remote.activities : []);
+          setLastUpdatedAt(remote.updatedAt);
+          setDemoData(Boolean(remote.demoData));
+        }
+      } catch {
+        // A próxima rodada de sincronização tentará novamente sem interromper o uso.
+      }
+    }, 5000);
+    return () => window.clearInterval(intervalId);
+  }, [lastUpdatedAt]);
+
+  const handleAvatarChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) {
+      setProfileMessage('Escolha uma imagem PNG, JPG, WEBP ou GIF.');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setProfileMessage('A foto deve ter no máximo 1 MB.');
+      event.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfileForm((current) => ({ ...current, avatar: String(reader.result || '') }));
+      setProfileMessage('');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleProfileSave = async (event) => {
+    event.preventDefault();
+    setProfileBusy(true);
+    setProfileMessage('');
+    try {
+      const result = await updateProfile(profileForm);
+      setProfileForm({ name: result.profile.name, avatar: result.profile.avatar || '' });
+      onProfileUpdate?.(result.profile);
+      setProfileMessage('Perfil atualizado com sucesso.');
+      if (result.updatedAt) setLastUpdatedAt(result.updatedAt);
+    } catch (error) {
+      setProfileMessage(error.message || 'Não foi possível salvar o perfil.');
+    } finally {
+      setProfileBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!mobileMenuOpen) return undefined;
@@ -321,10 +394,24 @@ function InventoryApp({ user, onLogout }) {
     setActivePage('Produtos');
     setSearchTerm('');
     try {
-      await saveInventory({ products: nextProducts, activities: nextActivities });
+      const saved = await saveInventory({ products: nextProducts, activities: nextActivities, expectedUpdatedAt: lastUpdatedAt });
+      setLastUpdatedAt(saved.updatedAt || '');
+      setDemoData(false);
       setStorageError('');
-    } catch {
-      setStorageError('O produto foi incluído nesta sessão, mas não foi possível salvá-lo no Google Drive.');
+    } catch (error) {
+      if (error.conflict) {
+        try {
+          const remote = await getInventory();
+          setProducts(remote.products || []);
+          setActivities(remote.activities || []);
+          setLastUpdatedAt(remote.updatedAt || '');
+          setStorageError('Outro acesso atualizou o estoque. Os dados mais recentes foram carregados; refaça sua alteração.');
+        } catch {
+          setStorageError('Houve conflito de sincronização. Atualize a página e tente novamente.');
+        }
+      } else {
+        setStorageError(error.message || 'Não foi possível salvar no Google Drive.');
+      }
     }
   };
 
@@ -353,10 +440,24 @@ function InventoryApp({ user, onLogout }) {
     setIsMovementDialogOpen(false);
     setActivePage('Movimentações');
     try {
-      await saveInventory({ products: nextProducts, activities: nextActivities });
+      const saved = await saveInventory({ products: nextProducts, activities: nextActivities, expectedUpdatedAt: lastUpdatedAt });
+      setLastUpdatedAt(saved.updatedAt || '');
+      setDemoData(false);
       setStorageError('');
-    } catch {
-      setStorageError('A movimentação foi aplicada nesta sessão, mas não foi possível salvá-la no Google Drive.');
+    } catch (error) {
+      if (error.conflict) {
+        try {
+          const remote = await getInventory();
+          setProducts(remote.products || []);
+          setActivities(remote.activities || []);
+          setLastUpdatedAt(remote.updatedAt || '');
+          setStorageError('Outro acesso atualizou o estoque. Os dados mais recentes foram carregados; confira a quantidade antes de repetir a movimentação.');
+        } catch {
+          setStorageError('Houve conflito de sincronização. Atualize a página e tente novamente.');
+        }
+      } else {
+        setStorageError(error.message || 'Não foi possível salvar a movimentação no Google Drive.');
+      }
     }
   };
 
@@ -430,8 +531,8 @@ function InventoryApp({ user, onLogout }) {
             <span className="storage-card__link">Conheça o StockMain <ArrowRight size={13} /></span>
           </div>
           <div className="user-profile">
-            <span className="user-profile__avatar">IG</span>
-            <span className="user-profile__copy"><strong>{user?.name || user?.email || "Usuário"}</strong><small>Conta StockMain</small></span>
+            <span className="user-profile__avatar">{profileForm.avatar ? <img src={profileForm.avatar} alt="" /> : (profileForm.name || user?.email || 'U').slice(0, 2).toUpperCase()}</span>
+            <span className="user-profile__copy"><strong>{profileForm.name || user?.name || user?.email || "Usuário"}</strong><small>Conta StockMain</small></span>
             <button className="icon-button" type="button" aria-label="Sair da conta" onClick={onLogout}><ChevronDown size={16} /></button>
           </div>
         </div>
@@ -470,11 +571,12 @@ function InventoryApp({ user, onLogout }) {
                 </div>
               )}
             </div>
-            <span className="topbar__avatar">{(user?.name || user?.email || 'U').slice(0, 2).toUpperCase()}</span>
+            <button className="topbar__avatar" type="button" aria-label="Abrir perfil" onClick={() => selectPage('Configurações')}>{profileForm.avatar ? <img src={profileForm.avatar} alt="" /> : (profileForm.name || user?.email || 'U').slice(0, 2).toUpperCase()}</button>
           </div>
         </header>
 
         {storageError && <div className="storage-error" role="alert">{storageError}</div>}
+        {demoData && <div className="demo-data-notice" role="status">Dados demonstrativos carregados para você explorar o StockMain. Edite ou exclua os exemplos e cadastre seu estoque real.</div>}
         <div className="desktop-dashboard">
         <div className="page-content">
           {activePage === 'Visão geral' && <>
@@ -603,13 +705,22 @@ function InventoryApp({ user, onLogout }) {
           {activePage === 'Configurações' && (
             <>
               <section className="welcome-section"><div><div className="eyebrow"><Settings size={14} /> PREFERÊNCIAS</div><h1>Configurações</h1><p>Informações da sua conta StockMain.</p></div></section>
-              <article className="panel"><div className="panel__header"><div><h2>Conta</h2><p>Dados utilizados para acessar o StockMain.</p></div></div><div className="activity-list"><div className="activity-item"><span className="activity-item__icon"><Users size={17} /></span><div className="activity-item__content"><strong>{user?.name || 'Usuário'}</strong><p>{user?.email || ''}</p><small>Conta individual</small></div></div></div></article>
+              <article className="panel">
+                <div className="panel__header"><div><h2>Meu perfil</h2><p>Atualize seu nome e sua foto de identificação.</p></div></div>
+                <form className="profile-editor" onSubmit={handleProfileSave}>
+                  <div className="profile-editor__avatar">{profileForm.avatar ? <img src={profileForm.avatar} alt="Foto do perfil" /> : (profileForm.name || 'U').slice(0, 2).toUpperCase()}</div>
+                  <label className="profile-editor__field">Foto do perfil<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleAvatarChange} /><small>PNG, JPG, WEBP ou GIF · até 1 MB</small></label>
+                  <label className="profile-editor__field">Nome de exibição<input value={profileForm.name} onChange={(event) => setProfileForm((current) => ({ ...current, name: event.target.value }))} minLength="2" maxLength="80" required /></label>
+                  <label className="profile-editor__field">E-mail<input value={user?.email || ''} readOnly /></label>
+                  <div className="profile-editor__actions"><button className="button button--primary" type="submit" disabled={profileBusy}>{profileBusy ? 'Salvando...' : 'Salvar alterações'}</button>{profileMessage && <span role="status">{profileMessage}</span>}</div>
+                </form>
+              </article>
               <article className="panel" style={{ marginTop: 16 }}><div className="panel__header"><div><h2>Armazenamento</h2><p>Os dados são guardados em arquivos JSON no Google Drive da aplicação.</p></div></div><p className="empty-state">O acesso ao Drive é interno. Você não precisa conectar uma conta Google.</p></article>
             </>
           )}
         </div>
         </div>
-        <MobileWorkspace activePage={activePage} products={products} activities={activities} filteredProducts={filteredProducts} productsCount={products.length} movementsToday={movementsToday} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} />
+        <MobileWorkspace activePage={activePage} products={products} activities={activities} filteredProducts={filteredProducts} productsCount={products.length} movementsToday={movementsToday} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} profileForm={profileForm} setProfileForm={setProfileForm} onAvatarChange={handleAvatarChange} onProfileSave={handleProfileSave} profileBusy={profileBusy} profileMessage={profileMessage} />
         <nav className="mobile-bottom-nav" aria-label="Navegação mobile">
           {mobileTabs.map(({ label, icon: Icon }) => (
             <button className={`mobile-bottom-nav__item ${activePage === label ? 'mobile-bottom-nav__item--active' : ''}`} key={label} type="button" onClick={() => selectPage(label)} aria-current={activePage === label ? 'page' : undefined}>
@@ -740,7 +851,7 @@ function App() {
     );
   }
 
-  return <InventoryApp user={session.user} onLogout={logout} />;
+  return <InventoryApp user={session.user} onLogout={logout} onProfileUpdate={(profile) => setSession((current) => current ? ({ ...current, user: { ...current.user, name: profile.name, email: profile.email } }) : current)} />;
 }
 
 export default App;
