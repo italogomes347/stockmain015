@@ -381,6 +381,7 @@ function InventoryApp({ user, onLogout }) {
         {storageError && <div className="storage-error" role="alert">{storageError}</div>}
         <div className="desktop-dashboard">
         <div className="page-content">
+          {activePage === 'Visão geral' && <>
           <section className="welcome-section">
             <div>
               <div className="eyebrow"><CalendarDays size={14} /> PAINEL DE CONTROLE</div>
@@ -452,6 +453,65 @@ function InventoryApp({ user, onLogout }) {
           </section>
 
           <footer className="page-footer"><span>© 2026 StockMain</span><span>Gestão inteligente de estoque</span></footer>
+          </>}
+
+          {activePage === 'Produtos' && (
+            <>
+              <section className="welcome-section">
+                <div><div className="eyebrow"><Package size={14} /> CATÁLOGO</div><h1>Produtos</h1><p>Consulte e cadastre os produtos do seu estoque.</p></div>
+                <div className="welcome-section__actions"><button className="button button--primary" type="button" onClick={() => setIsProductDialogOpen(true)}><Plus size={17} /> Novo produto</button></div>
+              </section>
+              <article className="panel products-panel">
+                <div className="panel__header"><div><h2>Todos os produtos</h2><p>{filteredProducts.length} produto(s) encontrado(s)</p></div></div>
+                <div className="table-wrap">
+                  <table className="products-table">
+                    <thead><tr><th>CÓDIGO</th><th>PRODUTO</th><th>CATEGORIA</th><th>QUANTIDADE</th><th>PREÇO</th><th>STATUS</th></tr></thead>
+                    <tbody>
+                      {filteredProducts.map((product) => <tr key={product.id}><td>{product.id}</td><td><strong>{product.name}</strong></td><td>{product.category}</td><td>{product.quantity} / mín. {product.minimum}</td><td>{formatCurrency(product.price)}</td><td><span className={`status-pill status-pill--${product.status === 'Disponível' ? 'success' : product.status === 'Estoque baixo' ? 'warning' : 'danger'}`}><span />{product.status}</span></td></tr>)}
+                      {!filteredProducts.length && <tr><td className="empty-state" colSpan="6">Nenhum produto encontrado. Cadastre seu primeiro produto.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            </>
+          )}
+          {activePage === 'Movimentações' && (
+            <>
+              <section className="welcome-section"><div><div className="eyebrow"><Activity size={14} /> HISTÓRICO</div><h1>Movimentações</h1><p>Consulte as atividades registradas na sua conta.</p></div></section>
+              <article className="panel activity-panel">
+                <div className="panel__header"><div><h2>Histórico de atividades</h2><p>{activities.length} registro(s) armazenado(s)</p></div></div>
+                <div className="activity-list">
+                  {activities.length ? activities.map((activity, index) => <div className="activity-item" key={activity.id || `${activity.title}-${index}`}><span className={`activity-item__icon activity-item__icon--${activity.type}`}>{activity.type === 'entrada' ? <ArrowDownRight size={17} /> : activity.type === 'saida' ? <ArrowUpRight size={17} /> : <Activity size={17} />}</span><div className="activity-item__content"><strong>{activity.title}</strong><p>{activity.detail}</p><small>{activity.time}</small></div></div>) : <p className="empty-state">Ainda não há atividades registradas.</p>}
+                </div>
+              </article>
+            </>
+          )}
+          {activePage === 'Categorias' && (
+            <>
+              <section className="welcome-section"><div><div className="eyebrow"><Tags size={14} /> ORGANIZAÇÃO</div><h1>Categorias</h1><p>Visão das categorias presentes nos produtos cadastrados.</p></div></section>
+              <article className="panel"><div className="panel__header"><div><h2>Categorias encontradas</h2><p>Calculadas a partir dos produtos cadastrados</p></div></div><div className="table-wrap"><table className="products-table"><thead><tr><th>CATEGORIA</th><th>PRODUTOS</th></tr></thead><tbody>{[...new Set(products.map((product) => product.category).filter(Boolean))].sort().map((category) => <tr key={category}><td><strong>{category}</strong></td><td>{products.filter((product) => product.category === category).length}</td></tr>)}{!products.length && <tr><td className="empty-state" colSpan="2">Cadastre produtos para visualizar as categorias.</td></tr>}</tbody></table></div></article>
+            </>
+          )}
+          {activePage === 'Fornecedores' && (
+            <>
+              <section className="welcome-section"><div><div className="eyebrow"><Truck size={14} /> PARCEIROS</div><h1>Fornecedores</h1><p>Área de consulta de fornecedores.</p></div></section>
+              <article className="panel"><div className="panel__header"><div><h2>Cadastro de fornecedores</h2><p>O cadastro de fornecedores ainda não está conectado ao armazenamento.</p></div></div><p className="empty-state">Esta etapa será implementada após os módulos centrais de produtos e estoque.</p></article>
+            </>
+          )}
+          {activePage === 'Relatórios' && (
+            <>
+              <section className="welcome-section"><div><div className="eyebrow"><TrendingUp size={14} /> INDICADORES</div><h1>Relatórios</h1><p>Resumo calculado a partir dos dados da sua conta.</p></div><div className="welcome-section__actions"><button className="button button--secondary" type="button" onClick={() => window.print()}><Download size={16} /> Exportar</button></div></section>
+              <section className="metrics-grid"><MetricCard label="Produtos cadastrados" value={products.length.toLocaleString('pt-BR')} detail="total atual" trend="up" icon={Package} tone="blue" /><MetricCard label="Valor em estoque" value={formatCurrency(inventoryValue)} detail="valor calculado" trend="up" icon={ShoppingCart} tone="violet" /><MetricCard label="Estoque baixo" value={lowStockCount.toLocaleString('pt-BR')} detail="itens em atenção" trend="down" icon={AlertTriangle} tone="amber" /><MetricCard label="Atividades hoje" value={movementsToday.toLocaleString('pt-BR')} detail="registros salvos" trend="up" icon={Activity} tone="green" /></section>
+              <article className="panel"><div className="panel__header"><div><h2>Produtos que precisam de atenção</h2><p>Itens com quantidade igual ou inferior ao estoque mínimo.</p></div></div><div className="table-wrap"><table className="products-table"><thead><tr><th>PRODUTO</th><th>QUANTIDADE</th><th>ESTOQUE MÍNIMO</th><th>STATUS</th></tr></thead><tbody>{products.filter((product) => product.quantity <= product.minimum).map((product) => <tr key={product.id}><td><strong>{product.name}</strong></td><td>{product.quantity}</td><td>{product.minimum}</td><td>{getProductStatus(product)}</td></tr>)}{!lowStockCount && <tr><td className="empty-state" colSpan="4">Nenhum produto abaixo do estoque mínimo.</td></tr>}</tbody></table></div></article>
+            </>
+          )}
+          {activePage === 'Configurações' && (
+            <>
+              <section className="welcome-section"><div><div className="eyebrow"><Settings size={14} /> PREFERÊNCIAS</div><h1>Configurações</h1><p>Informações da sua conta StockMain.</p></div></section>
+              <article className="panel"><div className="panel__header"><div><h2>Conta</h2><p>Dados utilizados para acessar o StockMain.</p></div></div><div className="activity-list"><div className="activity-item"><span className="activity-item__icon"><Users size={17} /></span><div className="activity-item__content"><strong>{user?.name || 'Usuário'}</strong><p>{user?.email || ''}</p><small>Conta individual</small></div></div></div></article>
+              <article className="panel" style={{ marginTop: 16 }}><div className="panel__header"><div><h2>Armazenamento</h2><p>Os dados são guardados em arquivos JSON no Google Drive da aplicação.</p></div></div><p className="empty-state">O acesso ao Drive é interno. Você não precisa conectar uma conta Google.</p></article>
+            </>
+          )}
         </div>
         <MobileWorkspace activePage={activePage} products={products} activities={activities} filteredProducts={filteredProducts} productsCount={products.length} movementsToday={movementsToday} searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectPage={selectPage} onCreateProduct={() => setIsProductDialogOpen(true)} />
         <nav className="mobile-bottom-nav" aria-label="Navegação mobile">
