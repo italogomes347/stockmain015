@@ -103,6 +103,7 @@ function MobileProductCard({ product, onSelectProduct }) {
         <span><small>Quantidade</small><strong>{product.quantity} <small>/ mín. {product.minimum}</small></strong></span>
         <span><small>Preço unitário</small><strong>{formatCurrency(product.price)}</strong></span>
       </div>
+      <button className="mobile-product-details-button" type="button" onClick={() => onSelectProduct?.(product)}><Eye size={15} /> Ver detalhes</button>
     </article>
   );
 }
@@ -174,7 +175,7 @@ function MobileWorkspace({ activePage, products, activities, filteredProducts, p
       <section className="mobile-section mobile-section--first">
         <div className="mobile-summary-card"><span>Resumo de desempenho</span><strong>{formatCurrency(calculateInventory(products))}</strong><small>Valor calculado do estoque</small></div>
         <div className="mobile-report-grid"><article><TrendingUp size={19} /><small>Produtos ativos</small><strong>{productsCount.toLocaleString('pt-BR')}</strong></article><article><AlertTriangle size={19} /><small>Itens em alerta</small><strong>{products.filter((product) => product.quantity <= product.minimum).length.toLocaleString('pt-BR')}</strong></article><article><ArrowDownRight size={19} /><small>Entradas hoje</small><strong>{activities.filter((activity) => activity.type === 'entrada' && activity.createdAt && new Date(activity.createdAt).toLocaleDateString('pt-BR') === new Date().toLocaleDateString('pt-BR')).length.toLocaleString('pt-BR')}</strong></article><article><ArrowUpRight size={19} /><small>Saídas hoje</small><strong>{activities.filter((activity) => activity.type === 'saida' && activity.createdAt && new Date(activity.createdAt).toLocaleDateString('pt-BR') === new Date().toLocaleDateString('pt-BR')).length.toLocaleString('pt-BR')}</strong></article></div>
-        <button className="mobile-primary-action" type="button" onClick={() => window.print()}><Download size={17} /> Exportar resumo</button>
+        <div className="mobile-report-actions"><button className="mobile-primary-action" type="button" onClick={exportReport}><FileSpreadsheet size={17} /> Baixar CSV</button><button className="mobile-primary-action mobile-primary-action--secondary" type="button" onClick={() => window.print()}><Printer size={17} /> Imprimir</button></div>
         <div className="mobile-note">Os indicadores são calculados com base nos dados salvos nesta conta.</div>
       </section>
     );
