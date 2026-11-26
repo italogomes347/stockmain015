@@ -197,8 +197,6 @@ async function getOrCreateSharedInventory(folders, users) {
   let sharedId = await findJsonFile(sharedName, folders.usersId);
   if (sharedId) return { id: sharedId, data: await readJsonFile(sharedId) };
 
-  // Migração única: preserva os arquivos individuais e cria um backup integral antes
-  // de consolidar os estoques em um único inventário compartilhado.
   const legacy = [];
   for (const user of users) {
     const legacyId = await findJsonFile(`${user.id}.json`, folders.usersId);
@@ -298,8 +296,6 @@ export default async function handler(req, res) {
         setCookie(res, '', 0);
         return send(res, 200, { authenticated: false });
       }
-      // O perfil e a permissão são sempre lidos do índice atual do Drive,
-      // nunca do papel antigo congelado no cookie de login.
       const currentRole = currentUser.email === ADMIN_EMAIL ? 'admin' : (currentUser.role || 'user');
       return send(res, 200, { authenticated: true, user: publicUser({ ...currentUser, role: currentRole }) });
     }
@@ -346,7 +342,6 @@ export default async function handler(req, res) {
     const folders = await ensureFolders();
     const fileName = `${session.sub}.json`;
     let fileId = await findJsonFile(fileName, folders.usersId);
-
 
     if (action === 'listManagedUsers') {
       if (!isAdmin) return send(res, 403, { error: 'Somente o administrador pode consultar todas as contas.' });
