@@ -286,7 +286,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
   const [profileMessage, setProfileMessage] = useState('');
 
   useEffect(() => {
-    try { localStorage.setItem('stockmain-theme', theme); } catch {}
+    try { localStorage.setItem('stockmain-theme', theme); } catch (error) { console.warn('Não foi possível salvar a preferência de tema.', error); }
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
@@ -325,7 +325,9 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
           setLastUpdatedAt(remote.updatedAt);
           setStorageError('');
         }
-      } catch {
+      } catch (error) {
+        if (active) setStorageError('Não foi possível atualizar o estoque neste momento. A sincronização será tentada novamente.');
+        console.warn('Falha ao sincronizar o estoque.', error);
       } finally {
         pollInFlightRef.current = false;
       }
@@ -945,7 +947,8 @@ function App() {
           if (!current || current.user?.id !== data.user?.id) return current;
           return { ...current, user: data.user };
         });
-      } catch {
+      } catch (error) {
+        if (active) console.warn('Não foi possível verificar a sessão nesta tentativa.', error);
       } finally {
         checking = false;
       }
