@@ -12,6 +12,9 @@ Sistema web de gestão de estoque desenvolvido com React, JavaScript e Vite.
 - Histórico de atividades por conta.
 - Relatórios com indicadores calculados a partir dos dados armazenados.
 - Cadastro e login próprios do StockMain por e-mail e senha.
+- Persistência de produtos e movimentações em arquivos JSON no Google Drive, sem banco de dados.
+- Interface responsiva para desktop e dispositivos móveis.
+- Validação de formulários e atualização dinâmica com estado React.
 
 ## Tecnologias
 
@@ -58,7 +61,7 @@ A integração usa OAuth 2.0 de uma conta Google comum (não usa Service Account
 
 Configure as variáveis nos ambientes Vercel necessários (Production, Preview e Development). Marque credenciais e segredos como sensíveis. A `GOOGLE_OAUTH_REDIRECT_URI` deve corresponder exatamente à URI cadastrada no Google Cloud. O endpoint OAuth usa o domínio de produção padrão quando a variável não está definida, portanto configure-a explicitamente em previews e ambientes locais.
 
-O backend cria dentro da pasta raiz as pastas `Logins` e `Usuarios`. O arquivo `usuarios.json` mantém o índice das contas e cada conta possui seu próprio arquivo JSON de estoque.
+O backend cria dentro da pasta raiz as pastas `Logins` e `Usuarios`. O arquivo `usuarios.json` mantém o índice das contas. O estoque operacional atual é compartilhado entre os acessos e fica em `estoque-compartilhado.json`; arquivos individuais antigos são preservados durante a migração.
 
 **Importante:** não publique tokens ou segredos no repositório. Se um segredo já foi exposto, revogue ou rotacione-o no provedor e atualize a variável na Vercel.
 
@@ -102,6 +105,6 @@ A publicação será realizada pela Vercel, conectando o repositório GitHub e c
 
 ## Estado da implementação
 
-A integração de autenticação, armazenamento, cadastro de produtos, entradas e saídas está em desenvolvimento e precisa de validação no ambiente real. Antes de considerar a aplicação pronta para produção, execute build, lint e testes reais de cadastro, login, persistência após recarga, isolamento entre contas e permissões do Drive.
+O código contempla cadastro e consulta de produtos, entradas e saídas, alertas de estoque mínimo, pesquisa, relatórios e exportação CSV. A persistência usa arquivos JSON no Google Drive, sem banco de dados. A integração precisa de validação no ambiente real antes de ser considerada pronta. Antes de considerar a aplicação pronta para produção, execute build, lint e testes reais de cadastro, login, persistência após recarga, isolamento entre contas e permissões do Drive.
 
-Também precisam ser tratados e testados aspectos como limitação de tentativas de login e concorrência na atualização dos arquivos JSON. O módulo de fornecedores permanece apenas como área informativa nesta etapa.
+Também precisam ser tratados e testados aspectos como limitação de tentativas de login e concorrência na atualização dos arquivos JSON. O projeto deve ser validado com estoque inicialmente vazio. Produtos e movimentações devem ser criados por meio da própria aplicação; dados de demonstração não devem ser usados como se fossem registros reais.
