@@ -13,7 +13,7 @@ import ProductDialog from './components/ProductDialog.jsx';
 import ProductDetailsDialog from './components/ProductDetailsDialog.jsx';
 import SuppliersPanel from './components/SuppliersPanel.jsx';
 import { getInventory, saveInventory, getProfile, updateProfile } from './services/api.js';
-import { categoryData, supplierData } from './data/initialData.js';
+import { getCategoryData } from './data/initialData.js';
 import { calculateInventory, createProductId, formatCurrency, getProductStatus } from './utils/inventory.js';
 import {
   Activity,
@@ -60,8 +60,6 @@ const navigation = [
   { label: 'Relatórios', icon: TrendingUp }
 ];
 
-
-
 function MetricCard({ label, value, detail, trend, icon: Icon, tone }) {
   return (
     <article className="metric-card">
@@ -79,7 +77,6 @@ function MetricCard({ label, value, detail, trend, icon: Icon, tone }) {
     </article>
   );
 }
-
 
 const mobileTabs = [
   { label: 'Visão geral', icon: Home },
@@ -162,7 +159,7 @@ function MobileWorkspace({ user, activePage, products, activities, filteredProdu
     content = (
       <section className="mobile-section mobile-section--first">
         <div className="mobile-section__heading"><div><h2>Categorias cadastradas</h2><p>Organização dos produtos por grupo</p></div></div>
-        <div className="mobile-card-list">{categoryData.map((category) => <article className="mobile-info-card" key={category.name}><span className="mobile-info-card__icon"><Tags size={19} /></span><div><strong>{category.name}</strong><small>{category.count} produtos</small></div><b>{category.share}</b></article>)}</div>
+        <div className="mobile-card-list">{getCategoryData(products).map((category) => <article className="mobile-info-card" key={category.name}><span className="mobile-info-card__icon"><Tags size={19} /></span><div><strong>{category.name}</strong><small>{category.count} produtos</small></div><b>{category.share}</b></article>)}</div>
       </section>
     );
   } else if (activePage === 'Fornecedores') {
@@ -289,7 +286,7 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
   const [profileMessage, setProfileMessage] = useState('');
 
   useEffect(() => {
-    try { localStorage.setItem('stockmain-theme', theme); } catch { /* Preferência indisponível neste navegador. */ }
+    try { localStorage.setItem('stockmain-theme', theme); } catch (error) { console.warn('Não foi possível salvar a preferência de tema.', error); }
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
@@ -316,7 +313,6 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
   useEffect(() => {
     let active = true;
     const syncInventory = async () => {
-      // Evita respostas antigas do polling sobrescreverem uma alteração local ainda sendo salva.
       if (saveInFlightRef.current || pollInFlightRef.current) return;
       pollInFlightRef.current = true;
       try {
@@ -329,8 +325,9 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
           setLastUpdatedAt(remote.updatedAt);
           setStorageError('');
         }
-      } catch {
-        // Mantém a tela utilizável; a próxima rodada tenta sincronizar novamente.
+      } catch (error) {
+        if (active) setStorageError('Não foi possível atualizar o estoque neste momento. A sincronização será tentada novamente.');
+        console.warn('Falha ao sincronizar o estoque.', error);
       } finally {
         pollInFlightRef.current = false;
       }
@@ -514,7 +511,6 @@ function InventoryApp({ user, onLogout, onProfileUpdate }) {
       saveInFlightRef.current = false;
     }
   };
-
 
   const handleDeleteProduct = async (product) => {
     if (!window.confirm(`Excluir definitivamente o produto "${product.name}"? Essa ação não poderá ser desfeita.`)) return;
@@ -926,9 +922,6 @@ function App() {
     };
   }, []);
 
-  // Mantém o papel/permissões da sessão sincronizados com o cadastro no Drive.
-  // Assim, quando o administrador promove alguém a fornecedor, a navegação muda
-  // automaticamente sem exigir logout ou recarregar a página.
   useEffect(() => {
     if (!session?.user?.id) return undefined;
     let active = true;
@@ -954,8 +947,8 @@ function App() {
           if (!current || current.user?.id !== data.user?.id) return current;
           return { ...current, user: data.user };
         });
-      } catch {
-        // Falhas transitórias não encerram a sessão; a próxima rodada tenta novamente.
+      } catch (error) {
+        if (active) console.warn('Não foi possível verificar a sessão nesta tentativa.', error);
       } finally {
         checking = false;
       }

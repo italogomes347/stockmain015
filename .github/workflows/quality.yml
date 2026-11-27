@@ -1,0 +1,32 @@
+name: Qualidade do código
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - higor
+      - italo
+      - davi
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+      - name: Verificar código
+        run: npm run lint
+      - name: Gerar versão de produção
+        run: npm run build
