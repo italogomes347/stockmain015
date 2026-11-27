@@ -13,7 +13,7 @@ import ProductDialog from './components/ProductDialog.jsx';
 import ProductDetailsDialog from './components/ProductDetailsDialog.jsx';
 import SuppliersPanel from './components/SuppliersPanel.jsx';
 import { getInventory, saveInventory, getProfile, updateProfile } from './services/api.js';
-import { categoryData, supplierData } from './data/initialData.js';
+import { getCategoryData } from './data/initialData.js';
 import { calculateInventory, createProductId, formatCurrency, getProductStatus } from './utils/inventory.js';
 import {
   Activity,
@@ -159,7 +159,7 @@ function MobileWorkspace({ user, activePage, products, activities, filteredProdu
     content = (
       <section className="mobile-section mobile-section--first">
         <div className="mobile-section__heading"><div><h2>Categorias cadastradas</h2><p>Organização dos produtos por grupo</p></div></div>
-        <div className="mobile-card-list">{categoryData.map((category) => <article className="mobile-info-card" key={category.name}><span className="mobile-info-card__icon"><Tags size={19} /></span><div><strong>{category.name}</strong><small>{category.count} produtos</small></div><b>{category.share}</b></article>)}</div>
+        <div className="mobile-card-list">{getCategoryData(products).map((category) => <article className="mobile-info-card" key={category.name}><span className="mobile-info-card__icon"><Tags size={19} /></span><div><strong>{category.name}</strong><small>{category.count} produtos</small></div><b>{category.share}</b></article>)}</div>
       </section>
     );
   } else if (activePage === 'Fornecedores') {
