@@ -173,6 +173,25 @@ function publicUser(user) {
   return { id: user.id, name: user.name, email: user.email, role: user.email === ADMIN_EMAIL ? 'admin' : (user.role || 'user'), createdAt: user.createdAt || null, active: user.active !== false };
 }
 
+const INITIAL_PRODUCTS = [
+  { id: 'PRD-001', name: 'Notebook Pro 15', sku: 'NTB-015', category: 'Informática', quantity: 24, minimum: 10, price: 4299.90, status: 'Disponível' },
+  { id: 'PRD-002', name: 'Mouse sem fio', sku: 'MOU-002', category: 'Acessórios', quantity: 8, minimum: 12, price: 89.90, status: 'Estoque baixo' },
+  { id: 'PRD-003', name: 'Teclado mecânico', sku: 'TEC-003', category: 'Acessórios', quantity: 36, minimum: 10, price: 249.90, status: 'Disponível' },
+  { id: 'PRD-004', name: 'Monitor 27 polegadas', sku: 'MON-027', category: 'Informática', quantity: 5, minimum: 8, price: 1199.90, status: 'Estoque baixo' },
+  { id: 'PRD-005', name: 'Headset profissional', sku: 'HDS-005', category: 'Áudio', quantity: 0, minimum: 6, price: 319.90, status: 'Sem estoque' },
+  { id: 'PRD-006', name: 'Webcam Full HD', sku: 'WEB-1080', category: 'Periféricos', quantity: 14, minimum: 5, price: 189.90, status: 'Disponível' },
+  { id: 'PRD-007', name: 'Processador AMD Ryzen 5 5600', sku: 'CPU-R55600', category: 'Processadores', quantity: 9, minimum: 4, price: 799.90, status: 'Disponível' },
+  { id: 'PRD-008', name: 'Placa de vídeo GeForce RTX 4060 8GB', sku: 'GPU-RTX4060', category: 'Placas de vídeo', quantity: 3, minimum: 5, price: 2199.90, status: 'Estoque baixo' },
+  { id: 'PRD-009', name: 'Memória RAM DDR4 16GB 3200MHz', sku: 'RAM-D4-16', category: 'Memória RAM', quantity: 18, minimum: 8, price: 229.90, status: 'Disponível' },
+  { id: 'PRD-010', name: 'SSD NVMe 1TB', sku: 'SSD-NVME1T', category: 'Armazenamento', quantity: 11, minimum: 5, price: 389.90, status: 'Disponível' },
+  { id: 'PRD-011', name: 'Fonte 650W 80 Plus Bronze', sku: 'PSU-650B', category: 'Fontes', quantity: 4, minimum: 6, price: 349.90, status: 'Estoque baixo' },
+  { id: 'PRD-012', name: 'Placa-mãe B550M', sku: 'MB-B550M', category: 'Placas-mãe', quantity: 7, minimum: 3, price: 629.90, status: 'Disponível' },
+  { id: 'PRD-013', name: 'Gabinete Mid Tower Mesh', sku: 'CASE-MESH', category: 'Gabinetes', quantity: 6, minimum: 3, price: 279.90, status: 'Disponível' },
+  { id: 'PRD-014', name: 'Cooler para processador 120mm', sku: 'COOL-120', category: 'Refrigeração', quantity: 2, minimum: 5, price: 119.90, status: 'Estoque baixo' },
+  { id: 'PRD-015', name: 'Monitor IPS 24 polegadas', sku: 'MON-IPS24', category: 'Informática', quantity: 10, minimum: 4, price: 799.90, status: 'Disponível' },
+  { id: 'PRD-016', name: 'Mouse gamer RGB 7200 DPI', sku: 'MOU-G7200', category: 'Periféricos', quantity: 15, minimum: 6, price: 139.90, status: 'Disponível' }
+];
+
 async function getOrCreateSharedInventory(folders, users) {
   const sharedName = 'estoque-compartilhado.json';
   let sharedId = await findJsonFile(sharedName, folders.usersId);
@@ -232,14 +251,20 @@ async function getOrCreateSharedInventory(folders, users) {
 }
 
 function createInitialInventory(userId, profile = null) {
+  const now = new Date();
+  const ago = (minutes) => new Date(now.getTime() - minutes * 60000).toISOString();
   return {
     userId,
     profile,
     catalogVersion: 2,
     initialized: true,
-    products: [],
-    activities: [],
-    updatedAt: new Date().toISOString()
+    products: INITIAL_PRODUCTS.map((product) => ({ ...product })),
+    activities: [
+      { id: randomUUID(), title: 'Entrada de produtos', detail: 'Reposição de 12 unidades · Notebook Pro 15', time: new Date(now.getTime() - 20 * 60000).toLocaleString('pt-BR'), type: 'entrada', createdAt: ago(20) },
+      { id: randomUUID(), title: 'Saída de produtos', detail: 'Saída de 4 unidades · Teclado mecânico', time: new Date(now.getTime() - 55 * 60000).toLocaleString('pt-BR'), type: 'saida', createdAt: ago(55) },
+      { id: randomUUID(), title: 'Estoque ajustado', detail: 'Contagem atualizada · Mouse sem fio', time: new Date(now.getTime() - 180 * 60000).toLocaleString('pt-BR'), type: 'ajuste', createdAt: ago(180) }
+    ],
+    updatedAt: now.toISOString()
   };
 }
 
